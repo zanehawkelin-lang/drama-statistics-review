@@ -1,0 +1,66 @@
+/* Local refinement: membership repurchase cells and the membership history drawer. */
+.orders-table{min-width:2850px}
+.orders-table th:nth-child(3),.orders-table td:nth-child(3){min-width:146px;width:146px}
+.orders-table th:nth-child(4),.orders-table td:nth-child(4){min-width:230px;width:230px}
+.member-cell{font-variant-numeric:tabular-nums}
+.sort-header{border:0;background:none;padding:0;min-height:30px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:550;color:inherit;white-space:nowrap;border-radius:3px}
+.sort-header:hover{color:var(--accent)}
+.sort-carets{display:inline-flex;flex-direction:column;justify-content:center;gap:1px;color:#9ba2b0}
+.sort-carets>span{display:flex;height:7px;align-items:center}
+.sort-carets svg{width:10px;height:9px;stroke-width:2}
+.sort-up svg{transform:rotate(180deg)}
+.sort-header[data-direction="asc"] .sort-up,.sort-header[data-direction="desc"] .sort-down{color:var(--accent)}
+.member-total{display:inline-flex;align-items:baseline;gap:4px;min-height:30px;min-width:56px;padding:0;border:0;background:transparent;color:#4d4197;line-height:1.4;border-radius:3px}
+.member-total strong{font-size:18px;font-weight:620;letter-spacing:-.025em}
+.member-total>span{font-size:12px;color:#6a6483}
+.member-total svg{width:12px;height:12px;margin-left:3px;align-self:center;color:#9388bc;transition:transform .15s ease}
+.member-total:hover{color:var(--accent)}
+.member-total:hover svg{transform:translateX(2px)}
+.member-total.is-zero{color:#666f80}
+.member-total.is-zero>span{color:#737b89}
+.member-cell-split{display:flex;align-items:center;gap:7px;color:#6c7381;font-size:11px;line-height:1.6;white-space:nowrap;margin-top:3px}
+.member-cell-split b{font-weight:500;color:#4c5565}
+.member-dot{color:#abb0be}
+.member-cell-caption{color:#737b89;font-size:11px;line-height:1.6;margin-top:3px;white-space:nowrap}
+.member-no-count{display:inline-block;font-size:17px;color:#7d8594;line-height:30px}
+.member-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0 23px}
+.member-summary-total{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
+.member-summary-total>span{font-size:13px;color:#626b7b}
+.member-summary-total strong{font-size:28px;line-height:1.2;color:#4d4197;font-weight:620;letter-spacing:-.03em}
+.member-summary-breakdown{display:flex;gap:14px;align-items:center;font-size:12px;color:#657083;white-space:nowrap}
+.member-summary-breakdown b{font-weight:600;color:#3c4556;margin:0 2px}
+.member-summary-separator{height:12px;width:1px;background:#e2e5ec}
+.member-tabs{gap:25px;margin-bottom:0}
+.member-tabs .tab{font-size:13px;padding:10px 0 13px}
+.member-record-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.member-record-table th{height:39px;background:#fafbfe;color:#737b8b;font-size:11px;font-weight:500;text-align:left;padding:0 10px;border-bottom:1px solid var(--line)}
+.member-record-table td{padding:15px 10px;border-bottom:1px solid var(--line);vertical-align:middle;line-height:1.6}
+.member-record-table th:first-child,.member-record-table .record-type{width:132px}
+.member-record-table th:last-child,.member-record-table .record-money{text-align:right;width:100px}
+.record-secondary{display:block;font-size:11px;color:#727a89;line-height:1.65;margin-top:4px}
+.record-type .badge{font-size:10px;padding:1px 5px}
+.record-order .order-link{font-size:12px;font-weight:500}
+.record-money .money{font-size:14px;font-weight:550}
+.record-money .record-secondary{font-size:10px;margin-top:3px}
+.first-member-order{margin-top:22px;border:1px solid #e8ebf2;border-radius:7px;overflow:hidden}
+.first-member-order>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;cursor:pointer;background:#fafbfe}
+.first-member-order>summary::-webkit-details-marker{display:none}
+.first-label{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:500;color:#505a6b}
+.first-not-counted{font-size:10px;color:#7b8392;font-weight:400}
+.first-date{font-size:11px;color:#747d8e;display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.first-date svg{width:12px;height:12px}
+.first-member-order[open] .first-date svg{transform:rotate(180deg)}
+.first-member-body{padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line)}
+.first-member-body>.money{white-space:nowrap;font-size:12px}
+.first-member-body .order-link{font-size:11px}
+.member-footnote{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;font-size:11px;color:#7c8493;padding-top:16px;line-height:1.7}
+.member-scope{max-width:330px;text-align:right}
+.member-scope summary{display:inline-flex;align-items:center;gap:4px;list-style:none;cursor:pointer;color:#6d7187;white-space:nowrap}
+.member-scope summary::-webkit-details-marker{display:none}
+.member-scope summary svg{width:12px;height:12px}
+.member-scope p{padding-top:8px;line-height:1.75;text-align:left;max-width:290px;font-size:11px;color:#727b8b}
+.member-empty{padding:40px 16px 34px;text-align:center;border-bottom:1px solid var(--line)}
+.member-empty>div{font-size:14px;color:#505a6d}
+.member-empty>p{font-size:12px;line-height:1.7;color:#7a8393;margin-top:8px}
+@media(min-width:1700px){.orders-table{min-width:2975px}}
+@media(max-width:600px){.member-summary{display:block;padding-bottom:19px}.member-summary-total strong{font-size:27px}.member-summary-breakdown{margin-top:11px;gap:12px;font-size:12px}.member-tabs{gap:25px}.member-tabs .tab{font-size:12px}.member-record-table thead{display:none}.member-record-table,.member-record-table tbody{display:block}.member-record-table .member-record{display:grid;grid-template-columns:1fr auto;grid-template-areas:"type amount" "order order";gap:5px 12px;padding:15px 0;border-bottom:1px solid var(--line)}.member-record-table td{padding:0;border:0}.member-record-table .record-type{grid-area:type;width:auto;display:flex;align-items:center;gap:8px}.record-type .record-secondary{display:inline;margin:0;font-size:11px}.member-record-table .record-money{grid-area:amount;width:auto;display:flex;align-items:center;gap:4px}.record-money .record-secondary{display:inline;margin:0;font-size:10px}.member-record-table .record-order{grid-area:order}.record-order .order-link{font-size:12px}.record-order .record-secondary{margin-top:4px}.first-label{gap:6px}.first-not-counted{font-size:10px}.first-date{font-size:10px;gap:5px}.first-member-order>summary{padding:12px}.first-member-body{padding:12px;align-items:flex-start;flex-wrap:wrap}.member-footnote{font-size:10px;gap:10px}.member-scope{max-width:155px}.member-scope p{font-size:11px}.member-summary-total>span{font-size:13px}}

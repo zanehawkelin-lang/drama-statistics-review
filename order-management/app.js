@@ -1,4 +1,4 @@
-import {ORDERS,DRAMAS,PRODUCTS,APPS,COUNTRIES,PROMOTERS,PROMOTIONS,DEMO_START,DEMO_END,memberHistory,memberStats,isFirstPayment} from './data.js';
+import {ORDERS,DRAMAS,PRODUCTS,APPS,COUNTRIES,PROMOTERS,PROMOTIONS,DEMO_START,DEMO_END,memberHistory,memberStats,isFirstPayment} from './data.js?v=first-payment-20261109';
 
 const icons={
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',

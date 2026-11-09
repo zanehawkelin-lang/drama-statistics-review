@@ -1,4 +1,4 @@
-import {ORDERS,DRAMAS,PRODUCTS,APPS,COUNTRIES,PROMOTERS,PROMOTIONS,DEMO_START,DEMO_END,memberHistory,memberStats} from './data.js';
+import {ORDERS,DRAMAS,PRODUCTS,APPS,COUNTRIES,PROMOTERS,PROMOTIONS,DEMO_START,DEMO_END,memberHistory,memberStats,isFirstPayment} from './data.js';
 
 const icons={
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
@@ -19,7 +19,7 @@ const icons={
 const svg=(name,extra='')=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${icons[name]||icons.info}</svg>`;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>Number(n).toFixed(2);
-const defaults={app:'',queryType:'id',query:'',userId:'',status:'',timeType:'createdAt',start:DEMO_START,end:DEMO_END,drama:'',promotion:'',provider:'',method:'',productType:'',product:'',source:'',promoter:'',country:'',repeatMetric:'total',repeatMin:'',repeatMax:''};
+const defaults={app:'',queryType:'id',query:'',userId:'',status:'',timeType:'createdAt',start:DEMO_START,end:DEMO_END,drama:'',promotion:'',provider:'',method:'',productType:'',product:'',source:'',promoter:'',country:'',firstPayment:'',repeatMetric:'total',repeatMin:'',repeatMax:''};
 const SORT_FIELDS={created:{label:'创建时间',asc:'从旧到新',desc:'从新到旧'},paid:{label:'支付时间',asc:'从旧到新',desc:'从新到旧'},total:{label:'会员复购次数',asc:'从少到多',desc:'从多到少'},auto:{label:'自动续费次数',asc:'从少到多',desc:'从多到少'},manual:{label:'手动复购次数',asc:'从少到多',desc:'从多到少'}};
 let applied={...defaults},page=1,pageSize=10,sort='created-desc',activeHistory=null,historyTab='all',lastFocus=null,toastTimer;
 const drawer=document.querySelector('#detail-drawer');
@@ -69,6 +69,7 @@ function renderShell(){
           ${field('source','来源平台',['Facebook','AppLovin'])}
           ${field('promoter','投手',PROMOTERS)}
           ${field('country','国家 / 地区',COUNTRIES)}
+          ${field('firstPayment','是否首充',[{value:'yes',label:'是'},{value:'no',label:'否'}])}
           <div class="field"><label for="repeatMetric">复购次数类型</label><select id="repeatMetric" name="repeatMetric"><option value="total">会员复购总次数</option><option value="auto">自动续费次数</option><option value="manual">手动复购次数</option></select></div>
           <div class="field"><span class="field-label">次数范围</span><div class="range-pair"><input type="number" name="repeatMin" id="repeatMin" min="0" step="1" placeholder="最小值" aria-label="复购次数最小值"><span class="muted">—</span><input type="number" name="repeatMax" id="repeatMax" min="0" step="1" placeholder="最大值" aria-label="复购次数最大值"></div></div>
         </div></div>
@@ -93,6 +94,7 @@ function matchesSearch(o,f){
   if(f.query&&o[f.queryType].toLowerCase()!==f.query.trim().toLowerCase())return false;
   if(f.userId&&o.userId!==f.userId.trim())return false;
   if(f.status&&o.status!==f.status)return false;
+  if(f.firstPayment && isFirstPayment(o)!==(f.firstPayment==='yes'))return false;
   const date=o[f.timeType]?.slice(0,10)||'';
   if((f.start||f.end)&&!date)return false;
   if(f.start&&date<f.start)return false;
@@ -147,7 +149,7 @@ function repeatCell(o){
   return `<button class="member-total ${s.total===0?'is-zero':''}" data-history="${o.userId}" data-app="${esc(o.app)}" aria-label="查看用户${o.userId}在${o.app}的会员复购记录，累计${s.total}次"><strong>${s.total}</strong><span>次</span>${svg('chevron')}</button>${s.total?`<div class="member-cell-split"><span>自动 <b>${s.auto}</b></span><span class="member-dot" aria-hidden="true">·</span><span>手动 <b>${s.manual}</b></span></div>`:'<div class="member-cell-caption">尚未复购</div>'}`;
 }
 function orderRow(o){return `<tr data-order-id="${o.id}">
-  <td><div class="copy-line"><button class="order-link" data-order="${o.id}" aria-label="查看订单${o.id}">${o.id}</button>${copyButton(o.id,'复制订单号')}</div><div class="copy-line subtle" style="margin-top:6px"><span class="truncate" title="${esc(o.transactionId)}">${esc(o.transactionId)}</span>${copyButton(o.transactionId,'复制三方交易号')}</div></td>
+  <td><div class="copy-line order-number-line"><button class="order-link" data-order="${o.id}" aria-label="查看订单${o.id}">${o.id}</button>${copyButton(o.id,'复制订单号')}${isFirstPayment(o)?'<span class="first-charge-badge" title="当前应用内该用户的首次成功付款">首充</span>':''}</div><div class="copy-line subtle" style="margin-top:6px"><span class="truncate" title="${esc(o.transactionId)}">${esc(o.transactionId)}</span>${copyButton(o.transactionId,'复制三方交易号')}</div></td>
   <td><div class="user-top"><span>用户ID：${o.userId}</span><span class="country">${o.country}</span>${o.test?'<span class="badge test-label">测试</span>':''}</div><div class="copy-line"><span class="uuid" title="${esc(o.uuid)}">UUID：${esc(o.uuid)}</span>${copyButton(o.uuid,'复制UUID')}</div></td>
   <td class="member-cell">${repeatCell(o)}</td>
   <td><div class="drama-title" title="${esc(o.drama.title)}">${esc(o.drama.title)}</div><div class="drama-ids">通用ID ${o.drama.commonId} · 语言ID ${o.drama.id}</div></td>
@@ -177,6 +179,7 @@ function renderChips(){
   const chips=[];
   const labels={app:'应用',userId:'用户ID',status:'状态',drama:'剧目',promotion:'推广链接',provider:'服务商',method:'支付方式',productType:'商品类型',source:'来源平台',promoter:'投手',country:'国家'};
   for(const [k,label]of Object.entries(labels))if(applied[k])chips.push([k,`${label}：${applied[k]}`]);
+  if(applied.firstPayment)chips.push(['firstPayment',`是否首充：${applied.firstPayment==='yes'?'是':'否'}`]);
   if(applied.query)chips.push(['query',`${applied.queryType==='id'?'订单号':'三方交易号'}：${applied.query}`]);
   if(applied.start||applied.end)chips.push(['dates',`${applied.timeType==='createdAt'?'创建时间':'支付成功时间'}：${applied.start||'不限'} 至 ${applied.end||'不限'}`]);
   if(applied.product)chips.push(['product',`商品：${PRODUCTS.find(p=>p.id===applied.product)?.label||applied.product}`]);
@@ -235,6 +238,7 @@ function openOrder(id,fromHistory=false){
     <h3 class="section-title">付款与商品</h3><dl class="detail-grid">
     ${detailField('订单金额（C端原价）',`<span class="money">$${money(o.original)}</span> <span class="muted">USD</span>`)}${detailField('实付金额（付款金额）',`<span class="money">$${money(o.amount)}</span> <span class="muted">USD</span>`)}
     ${detailField('购买商品',`${o.product.label}<div class="subtle">${o.product.type} · 商品ID ${o.product.id}</div>`)}${detailField('本笔购买类型',`${o.purchaseType}<div class="subtle">自动续费产品：${o.autoProduct?'是':'否'}</div>`)}
+    ${detailField('是否首充',isFirstPayment(o)===null?'—（未成功付款）':isFirstPayment(o)?'是':'否')}
     ${detailField('支付渠道',`${o.provider} · ${o.method}`)}${detailField('三方交易号',`${esc(o.transactionId)} ${copyButton(o.transactionId,'复制三方交易号')}`)}
     ${detailField('创建时间',`${o.createdAt}（UTC+8）`)}${detailField('支付成功时间',o.paidAt?`${o.paidAt}（UTC+8）`:'—')}
     ${o.subscriptionId?detailField('订阅编号',o.subscriptionId,true):''}</dl>
@@ -245,16 +249,16 @@ function openOrder(id,fromHistory=false){
 }
 function openHelp(){openDrawer(`${drawerHeader('字段口径说明','订单金额与会员复购')}<div class="drawer-body help-copy">
   <h3>金额</h3><p><strong>订单金额：</strong>C端展示的原价金额。<br><strong>实付金额：</strong>付款金额。</p><p>是否付款成功以订单状态和支付成功时间为准。</p>
-  <h3>会员复购</h3><div class="formula">会员复购总次数 ＝ 自动续费次数 ＋ 手动复购次数</div><ul><li>首次成功购买会员，不计入会员复购。</li><li>自动续费：系统按订阅自动扣款成功。</li><li>手动复购：用户主动再次成功购买会员，包括重新订阅。</li><li>待支付、失败、关闭订单，以及金币、单剧解锁订单，不计入。</li></ul>
+  <h3>是否首充</h3><p>同一用户在当前应用内的首笔成功付款订单，会员、金币和单剧解锁均参与判断。按支付成功时间确定，不受列表时间范围、商品筛选或分页影响。</p><p>未成功付款的订单不占首充资格，也不归入“否”。首次购买会员不一定是首充，例如先买金币再买会员，会员订单为非首充，会员复购仍为0次。</p><h3>会员复购</h3><div class="formula">会员复购总次数 ＝ 自动续费次数 ＋ 手动复购次数</div><ul><li>首次成功购买会员，不计入会员复购。</li><li>自动续费：系统按订阅自动扣款成功。</li><li>手动复购：用户主动再次成功购买会员，包括重新订阅。</li><li>待支付、失败、关闭订单，以及金币、单剧解锁订单，不计入。</li></ul>
   <h3>范围与时间</h3><p>按当前应用内的同一用户累计。不同应用分别计算。</p><p>列表展示的是用户截至当前的累计次数，同一用户的不同订单行显示一致；它不代表本笔订单是第几次续费。</p><p>订单时间筛选只影响订单列表，累计复购次数与会员复购记录不受影响。</p>
   <h3>零次与暂无记录</h3><p><strong>0次：</strong>已有首次成功购买会员，尚未发生复购。<br><strong>—：</strong>当前应用内暂无成功购买会员记录。</p>
   </div>`);}
 async function copyText(value){try{await navigator.clipboard.writeText(value);toast('已复制');}catch{toast('复制未完成，请选中编号后手动复制');}}
 function exportCSV(){
   const rows=filteredOrders();if(!rows.length)return;
-  const headers=['订单号','三方交易号','用户ID','所属应用','国家/地区','会员复购总次数','自动续费次数','手动复购次数','本笔购买类型','语言剧目ID','剧目名','支付服务商','支付方式','订单金额（C端原价）','实付金额（付款金额）','币种','商品','订单状态','创建时间（UTC+8）','支付成功时间（UTC+8）','来源平台','推广链接ID','投手','测试用户'];
+  const headers=['订单号','三方交易号','是否首充','用户ID','所属应用','国家/地区','会员复购总次数','自动续费次数','手动复购次数','本笔购买类型','语言剧目ID','剧目名','支付服务商','支付方式','订单金额（C端原价）','实付金额（付款金额）','币种','商品','订单状态','创建时间（UTC+8）','支付成功时间（UTC+8）','来源平台','推广链接ID','投手','测试用户'];
   const cell=v=>'"'+String(v??'').replaceAll('"','""')+'"';
-  const body=rows.map(o=>{const s=statsFor(o);return [o.id,o.transactionId,o.userId,o.app,o.country,s?.total??'',s?.auto??'',s?.manual??'',o.purchaseType,o.drama.id,o.drama.title,o.provider,o.method,money(o.original),money(o.amount),o.currency,o.product.label,o.status,o.createdAt,o.paidAt,o.source,o.promotionId,o.promoter,o.test?'是':'否'].map(cell).join(',');});
+  const body=rows.map(o=>{const s=statsFor(o);return [o.id,o.transactionId,isFirstPayment(o)===null?'—':isFirstPayment(o)?'是':'否',o.userId,o.app,o.country,s?.total??'',s?.auto??'',s?.manual??'',o.purchaseType,o.drama.id,o.drama.title,o.provider,o.method,money(o.original),money(o.amount),o.currency,o.product.label,o.status,o.createdAt,o.paidAt,o.source,o.promotionId,o.promoter,o.test?'是':'否'].map(cell).join(',');});
   const blob=new Blob(['\ufeff'+headers.map(cell).join(',')+'\r\n'+body.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`订单筛选结果_${DEMO_END}_${rows.length}条.csv`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast(`已导出全部 ${rows.length} 条筛选结果`);
 }

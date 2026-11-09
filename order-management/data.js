@@ -83,6 +83,20 @@ configs.forEach(([id,app,events],u)=>{
   }
 });
 export const ORDERS = all.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+// Classify against complete history before any list filters or pagination.
+export function firstPaymentIds(orders){
+  const firstByUser = new Map();
+  const paid = orders.filter(o=>o.status==='已支付' && o.paidAt).sort((a,b)=>a.paidAt.localeCompare(b.paidAt)||a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id));
+  for(const order of paid){
+    const key=JSON.stringify([order.app,order.userId]);
+    if(!firstByUser.has(key))firstByUser.set(key,order.id);
+  }
+  return new Set(firstByUser.values());
+}
+const firstPayments = firstPaymentIds(ORDERS);
+export function isFirstPayment(order){
+  return order.status==='已支付' && order.paidAt ? firstPayments.has(order.id) : null;
+}
 export const PROMOTIONS = [...new Map(ORDERS.map(o=>[o.promotionId,{id:o.promotionId,name:o.promotionName,app:o.app}])).values()].sort((a,b)=>a.id-b.id);
 export function memberHistory(userId,app){
   return ORDERS.filter(o=>o.userId===userId && o.app===app && o.product.type==='会员' && o.status==='已支付').sort((a,b)=>b.paidAt.localeCompare(a.paidAt));

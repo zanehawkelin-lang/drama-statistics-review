@@ -1,4 +1,4 @@
-import {ORDERS,DRAMAS,PRODUCTS,APPS,COUNTRIES,PROMOTERS,PROMOTIONS,DEMO_START,DEMO_END,memberHistory,memberStats,isFirstPayment} from './data.js?v=first-payment-20261109';
+import {ORDERS,DRAMAS,PRODUCTS,APPS,COUNTRIES,PROMOTERS,PROMOTIONS,DEMO_START,DEMO_END,memberHistory,memberStats,isFirstPayment} from './data.js?v=first-payment-visible-20261109';
 
 const icons={
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
@@ -80,7 +80,7 @@ function renderShell(){
         <div class="result-toolbar"><div class="result-label">订单明细<span class="result-count" id="resultCount"></span></div><div class="result-tools"><select id="sortOrders" class="sort-select" aria-label="订单排序">${Object.entries(SORT_FIELDS).map(([key,config])=>['desc','asc'].map(direction=>`<option value="${key}-${direction}">${config.label}：${config[direction]}</option>`).join('')).join('')}</select><button class="btn" id="exportOrders">${svg('export')}导出筛选结果</button></div></div>
         <div class="active-filters" id="activeFilters" aria-label="已应用的筛选条件"></div>
         <div class="table-scroll" id="tableScroll" tabindex="0" role="region" aria-label="订单表格，可横向滚动"><table class="orders-table"><thead><tr>
-          <th scope="col">订单信息</th><th scope="col">用户信息</th><th scope="col" data-sort-column="total" aria-sort="none"><span class="header-help">${sortHeader('total','会员复购')}<button class="copy" data-action="help" aria-label="查看会员复购次数口径" title="当前应用内的累计成功会员复购次数">${svg('info')}</button></span></th><th scope="col">短剧信息</th><th scope="col">所属应用</th><th scope="col">支付渠道</th><th scope="col">自动续费产品</th><th scope="col" title="C端展示的原价金额">订单金额</th><th scope="col" title="付款金额">实付金额</th><th scope="col">充值产品</th><th scope="col" data-sort-column="paid" aria-sort="none">${sortHeader('paid','支付时间')}</th><th scope="col" data-sort-column="created" aria-sort="descending">${sortHeader('created','创建时间')}</th><th scope="col">来源平台</th><th scope="col">推广链接信息</th><th scope="col">投手信息</th><th scope="col">订单状态</th>
+          <th scope="col">订单信息</th><th scope="col">用户信息</th><th scope="col" data-sort-column="total" aria-sort="none"><span class="header-help">${sortHeader('total','会员复购')}<button class="copy" data-action="help" aria-label="查看会员复购次数口径" title="当前应用内的累计成功会员复购次数">${svg('info')}</button></span></th><th scope="col">短剧信息</th><th scope="col">所属应用</th><th scope="col">支付渠道</th><th scope="col" title="C端展示的原价金额">订单金额</th><th scope="col" title="付款金额">实付金额</th><th scope="col">充值产品</th><th scope="col" data-sort-column="paid" aria-sort="none">${sortHeader('paid','支付时间')}</th><th scope="col" data-sort-column="created" aria-sort="descending">${sortHeader('created','创建时间')}</th><th scope="col">来源平台</th><th scope="col">推广链接信息</th><th scope="col">投手信息</th><th scope="col">订单状态</th>
         </tr></thead><tbody id="orderRows"></tbody></table></div>
         <div class="pagination"><span class="pagination-caption" id="paginationCaption"></span><div class="pagination-controls"><select id="pageSize" aria-label="每页显示条数"><option value="10">10条 / 页</option><option value="20">20条 / 页</option><option value="50">50条 / 页</option></select><div id="pageButtons" style="display:flex;gap:5px"></div><span id="pageMeta" class="page-meta"></span></div></div>
       </section>
@@ -154,7 +154,6 @@ function orderRow(o){return `<tr data-order-id="${o.id}">
   <td class="member-cell">${repeatCell(o)}</td>
   <td><div class="drama-title" title="${esc(o.drama.title)}">${esc(o.drama.title)}</div><div class="drama-ids">通用ID ${o.drama.commonId} · 语言ID ${o.drama.id}</div></td>
   <td><span class="badge">${o.app}</span></td><td><div class="payment-provider">${o.provider}</div><div class="payment-method">${o.method}</div></td>
-  <td><div><span class="badge ${o.autoProduct?'auto':''}">${o.autoProduct?'是':'否'}</span></div><div class="subtle" style="margin-top:6px">本笔：${o.purchaseType}</div></td>
   <td><span class="money">$${money(o.original)}</span><span class="currency">USD</span></td><td><span class="money">$${money(o.amount)}</span><span class="currency">USD</span></td>
   <td><div class="product-name">${esc(o.product.label)}</div><div class="subtle">商品ID：${o.product.id}</div></td>
   <td>${formatTime(o.paidAt)}</td><td>${formatTime(o.createdAt)}</td><td><span class="badge">${o.source}</span></td>
@@ -164,7 +163,7 @@ function orderRow(o){return `<tr data-order-id="${o.id}">
 function renderTable(){
   const list=filteredOrders(),pages=Math.max(1,Math.ceil(list.length/pageSize));page=Math.min(page,pages);
   const rows=list.slice((page-1)*pageSize,page*pageSize);
-  document.querySelector('#orderRows').innerHTML=rows.length?rows.map(orderRow).join(''):`<tr><td colspan="16" class="empty-cell"><div class="empty-inner"><div class="empty-title">没有符合条件的订单</div><p>试试缩小筛选条件，或检查订单号和用户ID。</p><button class="btn" data-action="reset">${svg('reset')}重置筛选</button></div></td></tr>`;
+  document.querySelector('#orderRows').innerHTML=rows.length?rows.map(orderRow).join(''):`<tr><td colspan="15" class="empty-cell"><div class="empty-inner"><div class="empty-title">没有符合条件的订单</div><p>试试缩小筛选条件，或检查订单号和用户ID。</p><button class="btn" data-action="reset">${svg('reset')}重置筛选</button></div></td></tr>`;
   document.querySelector('#resultCount').textContent=`共 ${list.length} 条`;
   document.querySelector('#paginationCaption').textContent=list.length?`第 ${(page-1)*pageSize+1}—${Math.min(page*pageSize,list.length)} 条，共 ${list.length} 条`:'共 0 条';
   document.querySelector('#pageMeta').textContent=`${page} / ${pages} 页`;
@@ -237,7 +236,7 @@ function openOrder(id,fromHistory=false){
   openDrawer(`${drawerHeader('订单详情',`${statusHTML(o.status)}<span>${o.id}</span>`,back)}<div class="drawer-body">
     <h3 class="section-title">付款与商品</h3><dl class="detail-grid">
     ${detailField('订单金额（C端原价）',`<span class="money">$${money(o.original)}</span> <span class="muted">USD</span>`)}${detailField('实付金额（付款金额）',`<span class="money">$${money(o.amount)}</span> <span class="muted">USD</span>`)}
-    ${detailField('购买商品',`${o.product.label}<div class="subtle">${o.product.type} · 商品ID ${o.product.id}</div>`)}${detailField('本笔购买类型',`${o.purchaseType}<div class="subtle">自动续费产品：${o.autoProduct?'是':'否'}</div>`)}
+    ${detailField('购买商品',`${o.product.label}<div class="subtle">${o.product.type} · 商品ID ${o.product.id}</div>`)}${detailField('本笔购买类型',o.purchaseType)}
     ${detailField('是否首充',isFirstPayment(o)===null?'—（未成功付款）':isFirstPayment(o)?'是':'否')}
     ${detailField('支付渠道',`${o.provider} · ${o.method}`)}${detailField('三方交易号',`${esc(o.transactionId)} ${copyButton(o.transactionId,'复制三方交易号')}`)}
     ${detailField('创建时间',`${o.createdAt}（UTC+8）`)}${detailField('支付成功时间',o.paidAt?`${o.paidAt}（UTC+8）`:'—')}

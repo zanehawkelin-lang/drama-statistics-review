@@ -9,4 +9,4 @@
 /* First-payment indicator shares the order column. */
 .order-number-line{flex-wrap:wrap;column-gap:5px;row-gap:3px}.first-charge-badge{display:inline-flex;align-items:center;flex-shrink:0;white-space:nowrap;padding:0 5px;border:1px solid #dcd5f7;border-radius:4px;background:#f4f1ff;color:#51428a;font-size:10px;line-height:18px;font-weight:550}
 
-.orders-table{min-width:2745px}.orders-table th:first-child,.orders-table td:first-child{width:260px;min-width:260px}
+.orders-table{min-width:2620px}.orders-table th:first-child,.orders-table td:first-child{width:260px;min-width:260px}

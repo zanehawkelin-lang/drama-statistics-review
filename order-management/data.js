@@ -76,7 +76,7 @@ configs.forEach(([id,app,events],u)=>{
     all.push(order);
   });
   const nonMember = PRODUCTS[u%2 === 0 ? 2 : 3];
-  all.push(makeOrder(user,'single',0,1,{product:nonMember,createdAt:dateAt(0,220+u*5)}));
+  all.push(makeOrder(user,'single',0,1,{product:nonMember,createdAt:dateAt(0,u===5?4:u===10?78:220+u*5)}));
   if(u%2 === 0){
     const status = ['待支付','已失败','已关闭'][Math.floor(u/2)%3];
     all.push(makeOrder(user,events.length ? 'manual' : 'first',0,1,{status,createdAt:dateAt(0,300+u*7)}));

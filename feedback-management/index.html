@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="DramaVideo 反馈管理交互原型：H5 与邮箱反馈统一管理、Gmail 接入、自动回执及沟通记录。仅使用模拟数据。">
+  <title>反馈管理 · DramaVideo Backend</title>
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../" aria-label="DramaVideo 后台首页"><span class="brand-mark" aria-hidden="true">D</span><span class="brand-divider"></span><span>DramaVideo Backend</span></a>
+    <nav class="topnav" aria-label="后台中心"><a href="../">首页</a><a href="#feedback" class="selected" aria-current="page">业务中心</a><a href="../payment-management/">投放中心</a></nav>
+    <div class="top-tools"><span class="badge">交互原型</span><button class="icon-button" id="helpButton" aria-label="原型使用说明"></button><span class="avatar" aria-label="演示管理员">D</span></div>
+  </header>
+  <aside class="sidebar">
+    <nav aria-label="业务中心菜单">
+      <span class="nav-item"><span class="nav-icon" data-icon="film"></span><span>短剧管理</span></span>
+      <a class="nav-item" href="../order-management/"><span class="nav-icon" data-icon="orders"></span><span>订单管理</span></a>
+      <span class="nav-item"><span class="nav-icon" data-icon="user"></span><span>用户管理</span></span>
+      <a class="nav-item active" href="#feedback" aria-current="page"><span class="nav-icon" data-icon="message"></span><span>反馈管理</span></a>
+      <span class="nav-item"><span class="nav-icon" data-icon="image"></span><span>Banner管理</span></span>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot"></span><span>模拟数据 · 不发送真实邮件</span></div>
+  </aside>
+  <main class="main-content" id="feedback">
+    <form class="filter-panel" id="filterForm" aria-label="筛选反馈">
+      <div class="filter-grid">
+        <div class="field"><label for="filterSource">反馈来源</label><select id="filterSource" name="source"><option value="">全部来源</option value="h5">H5 反馈</option><option value="email">邮箱来信</option></select></div>
+        <div class="field"><label for="filterUser">用户 ID</label><input id="filterUser" name="userId" placeholder="请输入用户 ID"></div>
+        <div class="field"><label for="filterEmail">联系邮箱</label><input id="filterEmail" name="email" placeholder="请输入用户邮箱"></div>
+        <div class="field"><label for="filterType">反馈类型</label><select id="filterType" name="type"><option value="">全部类型</option><option>充值问题</option><option>播放问题</option><option>账号问题</option><option>其他</option></select></div>
+        <div class="field"><label for="filterStatus">处理状态</label><select id="filterStatus" name="status"><option value="">全部状态</option><option value="pending">待处理</option><option value="processing">处理中</option><option value="done">已处理</option><option value="closed">已关闭</option></select></div>
+        <div class="field wide"><label for="dateStart">创建时间</label><div class="date-range"><input id="dateStart" name="start" type="date" value="2026-11-06" aria-label="开始日期"><span>—</span><input id="dateEnd" name="end" type="date" value="2026-11-12" aria-label="结束日期"></div></div>
+        <div class="filter-actions"><button class="btn" type="reset"><span data-icon="reset"></span>重置</button><button class="btn primary" type="submit"><span data-icon="search"></span>搜索</button></div>
+      </div>
+    </form>
+    <section class="content-panel" aria-label="反馈列表">
+      <div class="table-toolbar">
+        <div><div class="section-heading">反馈列表</div><div class="section-description" id="connectionSummary"></div></div>
+        <div class="toolbar-actions"><button class="btn" type="button" data-action="simulate"><span data-icon="plus"></span>演示新反馈</button><button class="btn plain" type="button" data-action="settings"><span data-icon="settings"></span>反馈设置</button><button class="btn" type="button" data-action="export"><span data-icon="download"></span>导出</button></div>
+      </div>
+      <div class="status-line" id="listStatus"></div>
+      <div id="connectionBanner"></div>
+      <div class="table-wrap"><table class="feedback-table"><colgroup><col style="width:76px"><col style="width:180px"><col style="width:80px"><col style="width:225px"><col style="width:120px"><col style="width:190px"><col style="width:125px"><col style="width:104px"></colgroup><thead><tr><th scope="col">ID / 来源</th><th scope="col">用户 / 联系邮箱</th><th scope="col">反馈类型</th><th scope="col">反馈内容</th><th scope="col">处理状态</th><th scope="col">最新人工回复</th><th scope="col">创建时间</th><th scope="col">操作</th></tr></thead><tbody id="feedbackRows"></tbody></table></div>
+      <div class="pagination" id="pagination"></div>
+    </section>
+    <p class="demo-note">原型演示：H5 与邮箱反馈统一管理，所有邮箱、内容及发送结果均为模拟。</p>
+  </main>
+  <div id="drawerRoot"></div><div id="modalRoot"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="data.js?v=1"></script><script src="app.js?v=1"></script>
+</body>
+</html>

@@ -67,3 +67,5 @@
 
 /* Keep membership guidance beside its field, above the scrolling table. */
 .membership-help{position:fixed;inset:auto;margin:0;box-sizing:border-box;max-width:calc(100vw - 24px);padding:13px 16px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);box-shadow:0 6px 20px rgba(31,31,62,.12);font-size:13px;line-height:1.7;overflow-wrap:break-word;}
+
+.order-renewal-link{display:block;text-decoration:none;color:inherit}.order-renewal-link:hover{color:var(--accent);background:var(--accent-light)}

@@ -43,7 +43,7 @@ function renderShell(){
     <aside class="sidebar" aria-label="业务导航">
       <div class="nav-item">${svg('film')}<span class="nav-label">短剧管理</span></div>
       <div class="nav-item nav-parent">${svg('orders')}<span class="nav-label">订单管理</span>${svg('down','class="chevron"')}</div>
-      <div class="nav-sub active" aria-current="page">订单列表</div><div class="nav-sub">订单日报</div>
+      <div class="nav-sub active" aria-current="page">订单列表</div><div class="nav-sub">订单日报</div><a class="nav-sub order-renewal-link" href="./auto-renewal/" target="_blank" rel="noopener">自动续费</a>
       <div class="nav-item">${svg('user')}<span class="nav-label">用户管理</span></div>
       <div class="nav-item">${svg('chat')}<span class="nav-label">反馈管理</span></div>
       <div class="nav-item">${svg('banner')}<span class="nav-label">Banner管理</span></div>

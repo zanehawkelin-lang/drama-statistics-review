@@ -19,6 +19,7 @@ const icons={
 const svg=(name,extra='')=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${icons[name]||icons.info}</svg>`;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>Number(n).toFixed(2);
+const MEMBER_FORMULA='会员复购总次数 ＝ 自动续费次数 ＋ 手动复购次数';
 const defaults={app:'',queryType:'id',query:'',userId:'',status:'',timeType:'createdAt',start:DEMO_START,end:DEMO_END,drama:'',promotion:'',provider:'',method:'',productType:'',product:'',source:'',promoter:'',country:'',firstPayment:'',repeatMetric:'total',repeatMin:'',repeatMax:''};
 const SORT_FIELDS={created:{label:'创建时间',asc:'从旧到新',desc:'从新到旧'},paid:{label:'支付时间',asc:'从旧到新',desc:'从新到旧'},total:{label:'会员复购次数',asc:'从少到多',desc:'从多到少'},auto:{label:'自动续费次数',asc:'从少到多',desc:'从多到少'},manual:{label:'手动复购次数',asc:'从少到多',desc:'从多到少'}};
 let applied={...defaults},page=1,pageSize=10,sort='created-desc',activeHistory=null,historyTab='all',lastFocus=null,toastTimer;
@@ -80,12 +81,12 @@ function renderShell(){
         <div class="result-toolbar"><div class="result-label">订单明细<span class="result-count" id="resultCount"></span></div><div class="result-tools"><select id="sortOrders" class="sort-select" aria-label="订单排序">${Object.entries(SORT_FIELDS).map(([key,config])=>['desc','asc'].map(direction=>`<option value="${key}-${direction}">${config.label}：${config[direction]}</option>`).join('')).join('')}</select><button class="btn" id="exportOrders">${svg('export')}导出筛选结果</button></div></div>
         <div class="active-filters" id="activeFilters" aria-label="已应用的筛选条件"></div>
         <div class="table-scroll" id="tableScroll" tabindex="0" role="region" aria-label="订单表格，可横向滚动"><table class="orders-table"><thead><tr>
-          <th scope="col">订单信息</th><th scope="col">用户信息</th><th scope="col" data-sort-column="total" aria-sort="none"><span class="header-help">${sortHeader('total','会员复购')}<button class="copy" data-action="help" aria-label="查看会员复购次数口径" title="当前应用内的累计成功会员复购次数">${svg('info')}</button></span></th><th scope="col">短剧信息</th><th scope="col">所属应用</th><th scope="col">支付渠道</th><th scope="col" title="C端展示的原价金额">订单金额</th><th scope="col" title="付款金额">实付金额</th><th scope="col">充值产品</th><th scope="col" data-sort-column="paid" aria-sort="none">${sortHeader('paid','支付时间')}</th><th scope="col" data-sort-column="created" aria-sort="descending">${sortHeader('created','创建时间')}</th><th scope="col">来源平台</th><th scope="col">推广链接信息</th><th scope="col">投手信息</th><th scope="col">订单状态</th>
+          <th scope="col">订单信息</th><th scope="col">用户信息</th><th scope="col" data-sort-column="total" aria-sort="none"><span class="header-help">${sortHeader('total','会员复购')}<button class="copy" popovertarget="membership-help" aria-label="查看会员复购次数口径">${svg('info')}</button></span></th><th scope="col">短剧信息</th><th scope="col">所属应用</th><th scope="col">支付渠道</th><th scope="col" title="C端展示的原价金额">订单金额</th><th scope="col" title="付款金额">实付金额</th><th scope="col">充值产品</th><th scope="col" data-sort-column="paid" aria-sort="none">${sortHeader('paid','支付时间')}</th><th scope="col" data-sort-column="created" aria-sort="descending">${sortHeader('created','创建时间')}</th><th scope="col">来源平台</th><th scope="col">推广链接信息</th><th scope="col">投手信息</th><th scope="col">订单状态</th>
         </tr></thead><tbody id="orderRows"></tbody></table></div>
         <div class="pagination"><span class="pagination-caption" id="paginationCaption"></span><div class="pagination-controls"><select id="pageSize" aria-label="每页显示条数"><option value="10">10条 / 页</option><option value="20">20条 / 页</option><option value="50">50条 / 页</option></select><div id="pageButtons" style="display:flex;gap:5px"></div><span id="pageMeta" class="page-meta"></span></div></div>
       </section>
     </main>
-  </div>`;
+  </div><div id="membership-help" class="membership-help" popover>${MEMBER_FORMULA}</div>`;
 }
 const statsCache=new Map();
 function statsFor(o){const k=`${o.app}:${o.userId}`;if(!statsCache.has(k))statsCache.set(k,memberStats(o.userId,o.app));return statsCache.get(k);}
@@ -225,7 +226,7 @@ function openHistory(userId,application,tab='all'){
     <div class="tabs member-tabs" role="tablist" aria-label="会员付款记录分类">${[['all','全部复购'],['auto','自动续费'],['manual','手动复购']].map(([key,label])=>`<button class="tab ${tab===key?'active':''}" role="tab" aria-selected="${tab===key}" data-history-tab="${key}">${label}</button>`).join('')}</div>
     <div id="historyRecords" class="member-records" role="tabpanel" aria-label="${{all:'全部',auto:'自动续费',manual:'手动复购'}[tab]}会员付款记录">${shown.length?`<table class="member-record-table"><thead><tr><th scope="col">类型 / 商品</th><th scope="col">订单 / 支付时间</th><th scope="col">实付金额</th></tr></thead><tbody>${shown.map(o=>`<tr class="member-record"><td class="record-type"><span class="badge ${o.event==='auto'?'auto':'manual'}">${o.purchaseType}</span><span class="record-secondary">${o.product.label}</span></td><td class="record-order"><button class="order-link" data-order="${o.id}" data-from-history="yes">${o.id}</button><span class="record-secondary">${o.paidAt.slice(0,16)}</span></td><td class="record-money"><span class="money">$${money(o.amount)}</span><span class="record-secondary">USD</span></td></tr>`).join('')}</tbody></table>`:`<div class="member-empty"><div>${tab==='all'?'尚未发生会员复购':`暂无${tab==='auto'?'自动续费':'手动复购'}记录`}</div><p>${s.total===0?'已完成首次会员购买，后续复购会展示在这里。':'此分类下暂无成功付款的会员订单。'}</p></div>`}</div>
     ${first?`<details class="first-member-order" ${s.total===0?'open':''}><summary><span class="first-label">首次购买<span class="first-not-counted">不计入复购</span></span><span class="first-date">${first.paidAt.slice(0,10)} ${svg('down')}</span></summary><div class="first-member-body"><div><button class="order-link" data-order="${first.id}" data-from-history="yes">${first.id}</button><span class="record-secondary">${first.product.label} · ${first.paidAt.slice(0,16)}</span></div><span class="money">$${money(first.amount)} <span class="currency">USD</span></span></div></details>`:''}
-    <div class="member-footnote"><span>仅展示成功付款 · 时间为 UTC+8</span><details class="member-scope"><summary>${svg('info')}统计口径</summary><p>按 ${application} 内当前用户累计，不受订单列表时间筛选影响。首次购买、金币充值、单剧解锁和未成功付款不计入会员复购。</p></details></div>
+    <div class="member-footnote"><span>仅展示成功付款 · 时间为 UTC+8</span><details class="member-scope"><summary>${svg('info')}统计口径</summary><p>${MEMBER_FORMULA}</p></details></div>
   </div>`);
 }
 function detailField(label,value,wide=false){return `<div class="detail-field ${wide?'wide':''}"><dt>${label}</dt><dd>${value}</dd></div>`;}
@@ -248,9 +249,7 @@ function openOrder(id,fromHistory=false){
 }
 function openHelp(){openDrawer(`${drawerHeader('字段口径说明','订单金额与会员复购')}<div class="drawer-body help-copy">
   <h3>金额</h3><p><strong>订单金额：</strong>C端展示的原价金额。<br><strong>实付金额：</strong>付款金额。</p><p>是否付款成功以订单状态和支付成功时间为准。</p>
-  <h3>是否首充</h3><p>同一用户在当前应用内的首笔成功付款订单，会员、金币和单剧解锁均参与判断。按支付成功时间确定，不受列表时间范围、商品筛选或分页影响。</p><p>未成功付款的订单不占首充资格，也不归入“否”。首次购买会员不一定是首充，例如先买金币再买会员，会员订单为非首充，会员复购仍为0次。</p><h3>会员复购</h3><div class="formula">会员复购总次数 ＝ 自动续费次数 ＋ 手动复购次数</div><ul><li>首次成功购买会员，不计入会员复购。</li><li>自动续费：系统按订阅自动扣款成功。</li><li>手动复购：用户主动再次成功购买会员，包括重新订阅。</li><li>待支付、失败、关闭订单，以及金币、单剧解锁订单，不计入。</li></ul>
-  <h3>范围与时间</h3><p>按当前应用内的同一用户累计。不同应用分别计算。</p><p>列表展示的是用户截至当前的累计次数，同一用户的不同订单行显示一致；它不代表本笔订单是第几次续费。</p><p>订单时间筛选只影响订单列表，累计复购次数与会员复购记录不受影响。</p>
-  <h3>零次与暂无记录</h3><p><strong>0次：</strong>已有首次成功购买会员，尚未发生复购。<br><strong>—：</strong>当前应用内暂无成功购买会员记录。</p>
+  <h3>是否首充</h3><p>同一用户在当前应用内的首笔成功付款订单，会员、金币和单剧解锁均参与判断。按支付成功时间确定，不受列表时间范围、商品筛选或分页影响。</p><p>未成功付款的订单不占首充资格，也不归入“否”。首次购买会员不一定是首充，例如先买金币再买会员，会员订单为非首充，会员复购仍为0次。</p><h3>会员复购</h3><div class="formula">${MEMBER_FORMULA}</div>
   </div>`);}
 async function copyText(value){try{await navigator.clipboard.writeText(value);toast('已复制');}catch{toast('复制未完成，请选中编号后手动复制');}}
 function exportCSV(){
@@ -262,6 +261,17 @@ function exportCSV(){
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`订单筛选结果_${DEMO_END}_${rows.length}条.csv`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast(`已导出全部 ${rows.length} 条筛选结果`);
 }
 renderShell();renderTable();
+const membershipHelp=document.querySelector('#membership-help');
+membershipHelp.addEventListener('beforetoggle',e=>{
+  if(e.newState!=='open')return;
+  const trigger=document.querySelector('[popovertarget="membership-help"]');
+  const rect=trigger.getBoundingClientRect(),width=Math.min(456,window.innerWidth-24);
+  membershipHelp.style.width=`${width}px`;
+  membershipHelp.style.left=`${Math.max(12,Math.min(rect.left,window.innerWidth-width-12))}px`;
+  membershipHelp.style.top=`${Math.max(12,Math.min(rect.bottom+8,window.innerHeight-88))}px`;
+});
+window.addEventListener('resize',()=>{if(membershipHelp.matches(':popover-open'))membershipHelp.hidePopover();});
+document.querySelector('#tableScroll').addEventListener('scroll',()=>{if(membershipHelp.matches(':popover-open'))membershipHelp.hidePopover();});
 document.querySelector('#filters').addEventListener('submit',e=>{e.preventDefault();applySearch();});
 document.querySelector('#resetFilters').addEventListener('click',resetFilters);
 document.querySelector('#toggleAdvanced').addEventListener('click',e=>{const b=e.currentTarget,a=document.querySelector('#advancedFilters');a.hidden=!a.hidden;document.querySelector('#filters').classList.toggle('expanded',!a.hidden);b.setAttribute('aria-expanded',String(!a.hidden));b.innerHTML=`${svg('filter')}${a.hidden?'高级筛选':'收起高级筛选'} ${svg('down',`style="width:12px;height:12px;transform:rotate(${a.hidden?'0':'180'}deg)"`)}`;});

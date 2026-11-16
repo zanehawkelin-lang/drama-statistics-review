@@ -15,8 +15,8 @@ const root=document.querySelector('#renewal-app'),drawer=document.querySelector(
 root.innerHTML=`<header class="topbar"><div class="brand"><svg class="brand-mark" viewBox="0 0 30 30" aria-hidden="true"><path fill="#d43a9e" stroke="none" d="M7 5h9a9 9 0 0 1 0 18H4z"/><path fill="#6651e9" stroke="none" d="M11 9h6a5 5 0 0 1 0 10H8z"/><path fill="#f8faff" stroke="none" d="m13 12 6 3-7 3z"/></svg><span class="brand-divider"></span>DramaVideo Backend</div><nav class="topnav" aria-label="后台中心"><span>首页</span><span class="active">业务中心</span><span>投放中心</span></nav><span class="demo-label" title="演示时点：${AS_OF}（UTC+8）">演示数据 · ${AS_OF.slice(5,10).replace('-','/')}</span><div class="avatar" aria-hidden="true">DV</div></header>
 <div class="shell" id="shell"><aside class="sidebar" aria-label="业务导航"><div class="nav-item">${icon('film')}<span class="nav-label">短剧管理</span></div><div class="nav-item nav-parent">${icon('orders')}<span class="nav-label">订单管理</span>${icon('down')}</div><a class="nav-sub nav-link" href="../">订单列表</a><div class="nav-sub">订单日报</div><a class="nav-sub active nav-link" href="./" aria-current="page">自动续费</a><div class="nav-item">${icon('user')}<span class="nav-label">用户管理</span></div><div class="nav-item">${icon('chat')}<span class="nav-label">反馈管理</span></div><div class="nav-item">${icon('banner')}<span class="nav-label">Banner管理</span></div><div class="sidebar-foot"><button class="sidebar-toggle" id="collapseSidebar" aria-label="收起或展开侧栏">${icon('sidebar')}</button><span>业务中心</span></div></aside>
 <main class="main"><div class="page-heading"><div class="heading-copy"><h1>用户订阅总览</h1><span class="breadcrumb">订单管理 / 自动续费</span></div><a class="text-button return-orders" href="../">返回订单列表</a></div>
-<form id="user-search" class="surface user-search" novalidate><div class="search-fields"><div class="field query-field"><label for="query">用户 / 订阅 / 订单查询</label><div class="lookup-box"><input id="query" name="query" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lookup-options" aria-describedby="search-help" placeholder="输入用户ID、订阅号、订单号或三方交易号" autocomplete="off"><button type="button" class="clear-query" id="clear-query" aria-label="清空查询">${icon('close')}</button><div class="lookup-menu" id="lookup-menu" hidden><div class="lookup-menu-label" id="lookup-menu-label">选择用户</div><div role="listbox" id="lookup-options" aria-label="匹配的用户与记录"></div></div></div></div><div class="search-actions"><button class="btn primary" type="submit">${icon('search')}查询</button></div></div><p class="search-help" id="search-help">自动识别编号，定位用户及关联订阅；应用可在结果中直接切换。</p><div class="recent-users" id="recent-users" hidden></div><p id="filter-error" class="filter-error" role="alert"></p></form>
-<section class="surface overview-results" aria-label="用户订阅查询结果"><div class="user-context" id="user-context"></div><div class="lookup-location" id="lookup-location" hidden></div><nav class="application-tabs" id="application-tabs" aria-label="当前用户的应用"></nav><div class="result-toolbar"><div class="result-label">订阅列表<span class="result-count" id="result-count" aria-live="polite"></span><button type="button" class="status-chip" id="status-chip" hidden></button></div><div class="result-tools"><select class="sort-select status-select" id="status" aria-label="订阅状态筛选"><option value="">全部状态</option><option>生效中</option><option>已取消</option><option>已到期</option></select><select class="sort-select" id="sort" aria-label="订阅排序"><option value="next-asc">下次扣款：从近到远</option><option value="next-desc">下次扣款：从远到近</option><option value="created-desc">订阅创建：从新到旧</option></select><button type="button" class="btn" id="export">${icon('export')}导出订阅</button></div></div><div class="overview-scroll" tabindex="0" role="region" aria-label="用户订阅列表，可横向滚动"><table class="overview-table"><thead><tr><th scope="col">订阅信息</th><th scope="col">订阅状态</th><th scope="col">下次扣款</th><th scope="col">最近扣款</th><th scope="col">操作</th></tr></thead><tbody id="rows"></tbody></table></div><div class="pagination" id="pagination" hidden><span class="pagination-caption" id="page-caption"></span><div class="pagination-controls"><select id="size" aria-label="每页条数"><option value="10">10条 / 页</option><option value="20">20条 / 页</option><option value="50">50条 / 页</option></select><div id="pages" class="renew-pages"></div></div></div></section></main></div>`;
+<form id="user-search" class="surface user-search" novalidate><div class="search-fields"><div class="field query-field"><label for="query">用户 / 订阅 / 订单查询</label><div class="lookup-box"><input id="query" name="query" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lookup-options" aria-describedby="search-help" placeholder="输入用户ID、订阅号、订单号或三方交易号" autocomplete="off"><button type="button" class="clear-query" id="clear-query" aria-label="清空查询">${icon('close')}</button><div class="lookup-menu" id="lookup-menu" hidden><div class="lookup-menu-label" id="lookup-menu-label">选择用户</div><div role="listbox" id="lookup-options" aria-label="匹配的用户与记录"></div></div></div></div><div class="field top-filter-field"><label for="app">所属应用</label><select id="app" aria-label="所属应用"><option value="">全部应用</option>${APPS.map(app=>`<option value="${esc(app)}">${esc(app)}</option>`).join('')}</select></div><div class="field top-filter-field"><label for="status">订阅状态</label><select id="status" aria-label="订阅状态筛选"><option value="">全部状态</option><option>生效中</option><option>已取消</option><option>已到期</option></select></div><div class="field top-filter-field"><label for="sort">排序方式</label><select id="sort" aria-label="订阅排序"><option value="next-asc">下次扣款：从近到远</option><option value="next-desc">下次扣款：从远到近</option><option value="created-desc">订阅创建：从新到旧</option></select></div><div class="search-actions"><button class="btn primary" type="submit">${icon('search')}查询</button></div></div><p class="search-help" id="search-help">自动识别用户ID、订阅号、订单号或三方交易号；应用、状态和排序可直接调整。</p><div class="recent-users" id="recent-users" hidden></div><p id="filter-error" class="filter-error" role="alert"></p></form>
+<section class="surface overview-results" aria-label="用户订阅查询结果"><div class="user-context" id="user-context"></div><div class="lookup-location" id="lookup-location" hidden></div><div class="result-toolbar"><div class="result-label">订阅列表<span class="result-count" id="result-count" aria-live="polite"></span><button type="button" class="status-chip" id="status-chip" hidden></button></div><div class="result-tools"><button type="button" class="btn" id="export">${icon('export')}导出订阅</button></div></div><div class="overview-scroll" tabindex="0" role="region" aria-label="用户订阅列表，可横向滚动"><table class="overview-table"><thead><tr><th scope="col">订阅信息</th><th scope="col">订阅状态</th><th scope="col">下次扣款</th><th scope="col">最近扣款</th><th scope="col">操作</th></tr></thead><tbody id="rows"></tbody></table></div><div class="pagination" id="pagination" hidden><span class="pagination-caption" id="page-caption"></span><div class="pagination-controls"><select id="size" aria-label="每页条数"><option value="10">10条 / 页</option><option value="20">20条 / 页</option><option value="50">50条 / 页</option></select><div id="pages" class="renew-pages"></div></div></div></section></main></div>`;
 function visibleRows(){
   const [key,direction]=sort.split('-'),sign=direction==='asc'?1:-1;
   return selectSubscriptions(applied).sort((a,b)=>{
@@ -39,25 +39,20 @@ function render(){
   const rows=visibleRows(),user=USERS.find(u=>u.id===applied.userId),max=Math.max(1,Math.ceil(rows.length/pageSize));page=Math.min(page,max);
   const context=document.querySelector('#user-context');context.hidden=!user;
   context.innerHTML=user?`<div class="user-context-main"><span class="context-label">当前用户</span><strong>${user.id}</strong><span class="context-country">${user.country}</span></div><span class="context-note">按订阅分别查看续费安排与扣款记录</span>`:'';
-  renderApplications(user);renderLocation(user);
+  renderLocation(user);
   document.querySelector('#result-count').textContent=`共 ${rows.length} 条订阅`;
   const statusChip=document.querySelector('#status-chip');statusChip.hidden=!applied.status;statusChip.innerHTML=applied.status?`${applied.status}${icon('close')}`:'';statusChip.setAttribute('aria-label','清除订阅状态筛选');
-  const emptyTitle=!user?(lookupFailure?.title||'查询用户后查看订阅'):applied.status?'没有符合条件的订阅':'该应用下暂无订阅记录';
-  const emptyCopy=!user?(lookupFailure?.message||'点击查询框可选择用户，也可以输入订阅号或订单号直接定位。'):applied.status?'清除订阅状态筛选后查看该用户的全部订阅。':'点击全部应用，查看该用户的其他订阅。';
-  document.querySelector('#rows').innerHTML=rows.length?rows.slice((page-1)*pageSize,page*pageSize).map(row).join(''):`<tr><td colspan="5" class="overview-empty"><strong>${emptyTitle}</strong><p>${emptyCopy}</p>${applied.status?'<button class="btn" data-clear-status>清除状态筛选</button>':''}</td></tr>`;
+  const locatedOutside=!!user&&!!matched?.subscriptionId&&!rows.length;
+  const emptyTitle=!user?(lookupFailure?.title||'查询用户后查看订阅'):locatedOutside?'定位到的订阅不符合当前筛选':applied.status?'没有符合条件的订阅':'该应用下暂无订阅记录';
+  const emptyCopy=!user?(lookupFailure?.message||'点击查询框可选择用户，也可以输入订阅号或订单号直接定位。'):locatedOutside?`对应订阅属于${matched.app}，可调整上方应用、状态，或直接查看对应记录。`:applied.status?'清除订阅状态筛选后查看该用户的全部订阅。':'选择上方的全部应用，查看该用户的其他订阅。';
+  document.querySelector('#rows').innerHTML=rows.length?rows.slice((page-1)*pageSize,page*pageSize).map(row).join(''):`<tr><td colspan="5" class="overview-empty"><strong>${emptyTitle}</strong><p>${emptyCopy}</p>${locatedOutside?'<button class="btn" data-open-match>查看对应订阅</button>':applied.status?'<button class="btn" data-clear-status>清除状态筛选</button>':''}</td></tr>`;
   document.querySelector('#export').disabled=!rows.length;
-  document.querySelector('#status').disabled=!user;document.querySelector('#sort').disabled=!user;
+  document.querySelector('#app').value=applied.app;document.querySelector('#status').value=applied.status;document.querySelector('#sort').value=sort;
   document.querySelector('#pagination').hidden=rows.length<=10;
   document.querySelector('#page-caption').textContent=`第 ${rows.length?(page-1)*pageSize+1:0}—${Math.min(page*pageSize,rows.length)} 条，共 ${rows.length} 条`;
   document.querySelector('#pages').innerHTML=`<button class="page-btn" data-page="${page-1}" aria-label="上一页" ${page===1?'disabled':''}>上一页</button><span class="page-number">${page} / ${max}</span><button class="page-btn" data-page="${page+1}" aria-label="下一页" ${page===max?'disabled':''}>下一页</button>`;
 }
-function syncForm(){document.querySelector('#query').value=applied.userId;document.querySelector('#status').value=applied.status;document.querySelector('#sort').value=sort;}
-function renderApplications(user){
-  const nav=document.querySelector('#application-tabs');nav.hidden=!user;if(!user){nav.innerHTML='';return;}
-  const all=SUBSCRIPTIONS.filter(s=>s.userId===applied.userId),apps=[...new Set(all.map(s=>s.app))];
-  if(applied.app&&!apps.includes(applied.app))apps.push(applied.app);
-  nav.innerHTML=[['',all.length],...apps.map(app=>[app,all.filter(s=>s.app===app).length])].map(([app,count])=>`<button type="button" data-application="${app}" class="application-tab ${applied.app===app?'active':''}" aria-pressed="${applied.app===app}">${app||'全部应用'}<span>${count}</span></button>`).join('');
-}
+function syncForm(){document.querySelector('#query').value=applied.userId;document.querySelector('#app').value=applied.app;document.querySelector('#status').value=applied.status;document.querySelector('#sort').value=sort;}
 function renderLocation(user){
   const box=document.querySelector('#lookup-location');box.hidden=!user||!matched?.subscriptionId||!visibleRows().some(s=>s.id===matched.subscriptionId);
   box.innerHTML=box.hidden?'':`<span>已通过${lookupLabels[matched.kind]}定位到对应订阅</span><button type="button" class="text-button primary" data-open-match>${matched.billingId?'查看对应扣款记录':'查看定位订阅'}</button>`;
@@ -76,8 +71,8 @@ function showSuggestions(){
 }
 function selectSuggestion(index){const entry=suggestions[index];if(entry){document.querySelector('#query').value=entry.id;performLookup(entry);}}
 function performLookup(entry){
-  hideSuggestions();lookupFailure=null;matched=entry;applied={userId:entry.userId,app:entry.kind==='user'?'':entry.app,status:''};sort='next-asc';page=1;
-  document.querySelector('#status').value='';document.querySelector('#sort').value=sort;document.querySelector('#filter-error').textContent='';
+  hideSuggestions();lookupFailure=null;matched=entry;applied={userId:entry.userId,app:document.querySelector('#app').value,status:document.querySelector('#status').value};sort=document.querySelector('#sort').value;page=1;
+  document.querySelector('#filter-error').textContent='';
   const index=visibleRows().findIndex(s=>s.id===entry.subscriptionId);if(index>=0)page=Math.floor(index/pageSize)+1;
   rememberUser(entry.userId);render();
 }
@@ -85,13 +80,13 @@ function search(){
   const input=document.querySelector('#query'),raw=input.value.trim();input.value=raw;
   const matches=resolveLookup(raw);
   if(matches.length===1){performLookup(matches[0]);return;}
-  matched=null;applied={userId:'',app:'',status:''};page=1;
+  matched=null;applied={userId:'',app:document.querySelector('#app').value,status:document.querySelector('#status').value};page=1;
   lookupFailure=raw?{title:matches.length>1?'找到多条匹配记录':'未找到匹配的用户或记录',message:matches.length>1?'请选择对应的用户或应用后查看订阅。':'请核对完整编号，或在查询框的候选中选择匹配项。'}:null;
-  document.querySelector('#status').value='';document.querySelector('#filter-error').textContent=raw?(matches.length>1?'匹配到多条记录，请在候选中选择。':'请使用完整编号，或从候选中选择。'):'请输入用户ID、订阅号、订单号或三方交易号。';
+  document.querySelector('#filter-error').textContent=raw?(matches.length>1?'匹配到多条记录，请在候选中选择。':'请使用完整编号，或从候选中选择。'):'请输入用户ID、订阅号、订单号或三方交易号。';
   render();showSuggestions();input.focus();
 }
 function clearStatus(){applied.status='';document.querySelector('#status').value='';page=1;render();}
-function clearQuery(){applied={userId:'',app:'',status:''};matched=null;lookupFailure=null;page=1;document.querySelector('#query').value='';document.querySelector('#status').value='';document.querySelector('#filter-error').textContent='';render();renderRecent();document.querySelector('#query').focus();showSuggestions();}
+function clearQuery(){applied={userId:'',app:document.querySelector('#app').value,status:document.querySelector('#status').value};matched=null;lookupFailure=null;page=1;document.querySelector('#query').value='';document.querySelector('#filter-error').textContent='';render();renderRecent();document.querySelector('#query').focus();showSuggestions();}
 const field=(label,value)=>`<div class="detail-field"><dt>${label}</dt><dd>${value}</dd></div>`;
 function attemptDetails(b){
   return `<div class="billing-identifiers"><div><span>续费订单号</span><strong>${b.orderId}</strong></div><div><span>订阅商品</span><strong>${b.product}</strong></div></div><ol class="attempt-list">${b.attempts.map(a=>`<li class="${matched?.attemptId===a.id?'is-matched-attempt':''}"><div class="attempt-heading"><strong>第${a.attemptNo}次尝试</strong>${badge(a.status)}<time>${date(a.attemptedAt)}</time></div><dl class="attempt-fields">${field('扣款金额',`$${money(a.requested)} ${a.currency}`)}${field('实付金额',a.status==='成功'?`$${money(a.received)} ${a.currency}`:'—')}${field('支付渠道',`${a.provider} · ${a.method}`)}${field('三方交易号',esc(a.transactionId||'—'))}</dl>${a.status==='失败'?`<p class="attempt-failure">${esc(a.failureReason)}<span>渠道代码：${esc(a.failureCode)}</span></p>`:''}</li>`).join('')}</ol>`;
@@ -125,6 +120,7 @@ function toggleBill(button){
 document.querySelector('#user-search').addEventListener('submit',e=>{e.preventDefault();search();});
 document.querySelector('#clear-query').addEventListener('click',clearQuery);
 document.querySelector('#status-chip').addEventListener('click',clearStatus);
+document.querySelector('#app').addEventListener('change',e=>{applied.app=e.target.value;page=1;render();});
 document.querySelector('#status').addEventListener('change',e=>{applied.status=e.target.value;page=1;render();});
 document.querySelector('#sort').addEventListener('change',e=>{sort=e.target.value;page=1;render();});
 document.querySelector('#size').addEventListener('change',e=>{pageSize=Number(e.target.value);page=1;render();});
@@ -150,7 +146,6 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.lookup-box'))hideSuggestions();
   if(!button)return;
   if(button.dataset.recent){const entry=LOOKUP_INDEX.find(e=>e.kind==='user'&&e.userId===button.dataset.recent);if(entry){lookupInput.value=entry.id;performLookup(entry);}return;}
-  if(button.hasAttribute('data-application')){applied.app=button.dataset.application;page=1;render();return;}
   if(button.hasAttribute('data-open-match')&&matched?.subscriptionId){showDetails(matched.subscriptionId);return;}
   if(button.dataset.view){showDetails(button.dataset.view);return;}
   if(button.hasAttribute('data-close')){drawer.close();return;}

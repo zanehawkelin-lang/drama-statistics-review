@@ -18,20 +18,20 @@ let sequence=0;
 function addPeriod(subscriptionId,key,periodEnd,attempts){
   const sub=SUBSCRIPTIONS.find(s=>s.id===subscriptionId);
   const billingId=`${subscriptionId.replace('SUB','BILL')}-${key}`,orderId=`${subscriptionId.replace('SUB','ORDER')}-${key}`;
-  attempts.forEach(([attemptedAt,status,reason='',code=''],i)=>{
+  attempts.forEach(([attemptedAt,status,reason=''],i)=>{
     sequence++;
     ATTEMPTS.push({id:`DEMO-CHG-${String(sequence).padStart(5,'0')}`,subscriptionId,billingId,orderId,product:sub.product,periodEnd,attemptNo:i+1,attemptedAt,status,
       requested:sub.amount,received:status==='成功'?sub.amount:null,currency:sub.currency,paidAt:status==='成功'?attemptedAt:'',provider:sub.provider,method:sub.method,
-      transactionId:status==='处理中'?'':`DEMO-${sub.provider==='PayPal'?'PP':'AW'}-${String(sequence).padStart(8,'0')}`,failureReason:reason,failureCode:code});
+      transactionId:status==='处理中'?'':`DEMO-${sub.provider==='PayPal'?'PP':'AW'}-${String(sequence).padStart(8,'0')}`,failureReason:reason});
   });
 }
 addPeriod('DEMO-SUB-810001-01','20261025','2026-11-01 10:00:00',[['2026-10-25 10:00:12','成功']]);
 addPeriod('DEMO-SUB-810001-01','20261101','2026-11-08 10:00:00',[
-  ['2026-11-01 10:00:08','失败','余额不足','insufficient_funds'],['2026-11-01 11:30:05','成功']]);
+  ['2026-11-01 10:00:08','失败','余额不足'],['2026-11-01 11:30:05','成功']]);
 addPeriod('DEMO-SUB-810001-01','20261108','2026-11-15 10:00:00',[['2026-11-08 10:00:06','成功']]);
 addPeriod('DEMO-SUB-810001-02','20261013','2026-11-12 09:00:00',[['2026-10-13 09:00:15','成功']]);
 addPeriod('DEMO-SUB-810001-02','20261112','2026-12-12 09:00:00',[
-  ['2026-11-12 09:00:12','失败','余额不足','insufficient_funds'],['2026-11-12 15:00:24','失败','余额不足','insufficient_funds']]);
+  ['2026-11-12 09:00:12','失败','余额不足'],['2026-11-12 15:00:24','失败','余额不足']]);
 addPeriod('DEMO-SUB-810001-03','20261102','2026-11-09 16:30:00',[['2026-11-02 16:30:08','成功']]);
 addPeriod('DEMO-SUB-810001-03','20261109','2026-11-16 16:30:00',[['2026-11-09 16:30:09','成功']]);
 addPeriod('DEMO-SUB-810001-04','20261103','2026-11-10 12:00:00',[['2026-11-03 12:00:08','成功']]);

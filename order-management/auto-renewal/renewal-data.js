@@ -57,3 +57,28 @@ export function billingHistory(subscriptionId,attempts=ATTEMPTS){
 export function latestBilling(subscriptionId){return billingHistory(subscriptionId)[0]||null;}
 export function successfulRenewals(subscriptionId,attempts=ATTEMPTS){return billingHistory(subscriptionId,attempts).filter(b=>b.status==='成功').length;}
 export function entitlementValid(subscription){return subscription.periodEnd>AS_OF;}
+
+// A payment retry may repeat an order number, but must not create another user match.
+export function buildLookupIndex(users=USERS,subscriptions=SUBSCRIPTIONS,attempts=ATTEMPTS){
+  const entries=users.map(u=>({kind:'user',id:u.id,userId:u.id,app:'',subscriptionId:'',billingId:'',attemptId:'',country:u.country}));
+  for(const s of subscriptions)entries.push({kind:'subscription',id:s.id,userId:s.userId,app:s.app,subscriptionId:s.id,billingId:'',attemptId:'',product:s.product});
+  const subs=new Map(subscriptions.map(s=>[s.id,s]));
+  for(const a of attempts){
+    const s=subs.get(a.subscriptionId);if(!s)continue;
+    const base={userId:s.userId,app:s.app,subscriptionId:s.id,billingId:a.billingId,product:a.product};
+    if(a.orderId)entries.push({...base,kind:'order',id:a.orderId,attemptId:''});
+    if(a.transactionId)entries.push({...base,kind:'transaction',id:a.transactionId,attemptId:a.id});
+  }
+  return [...new Map(entries.map(e=>[JSON.stringify([e.kind,e.id.toLowerCase(),e.userId,e.app,e.subscriptionId,e.billingId]),e])).values()];
+}
+export const LOOKUP_INDEX=buildLookupIndex();
+export function resolveLookup(raw,index=LOOKUP_INDEX){
+  const value=String(raw??'').trim().toLowerCase();
+  return value?index.filter(e=>e.id.toLowerCase()===value):[];
+}
+export function suggestLookup(raw,index=LOOKUP_INDEX){
+  const value=String(raw??'').trim().toLowerCase();
+  if(!value)return index.filter(e=>e.kind==='user').slice(0,6);
+  const exact=resolveLookup(value,index);
+  return (exact.length?exact:index.filter(e=>e.id.toLowerCase().startsWith(value))).slice(0,6);
+}

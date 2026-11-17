@@ -29,7 +29,7 @@ const amountList = rows => {
 const bills = [], stops = [];
 function makeBill(key, day, app, mode, extra = {}) {
   const index = APPS.indexOf(app);
-  const currency = app === 'QuikDrama' ? 'EUR' : 'USD';
+  const currency = 'USD';
   const amount = mode % 2 === 0 ? 9.99 : 19.99;
   const billingId = `DEMO-BILL-${key}`;
   const subscriptionId = `DEMO-SUB-D-${key}`;
@@ -87,7 +87,7 @@ for (let offset = 0; offset < 30; offset++) {
         id: `DEMO-STOP-${key}`, subscriptionId: `DEMO-SUB-${key}`, userId: String(810001 + (offset % 4)),
         app, product: '30天会员', eventAt: at(day, '13:25'), stopType: 'voluntary',
         reason: '用户主动关闭自动续费', entitlementEnd: at(shiftDay(day, 12), '09:00'),
-        currency: app === 'QuikDrama' ? 'EUR' : 'USD', amount: null, attempts: [],
+        currency: 'USD', amount: null, attempts: [],
       });
     }
   });

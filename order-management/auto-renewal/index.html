@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7fc">
   <title>自动续费总览 · DramaVideo</title>
-  <meta name="description" content="按用户查看订阅、下次扣款和历史续费记录，使用模拟数据。">
+  <meta name="description" content="按日查看自动续订成功、失败、待重试及停止续费统计，支持查询明细。演示数据。">
   <link rel="stylesheet" href="../styles.css?v=first-payment-visible-20261109">
-  <link rel="stylesheet" href="./renewal.css?v=auto-renewal-overview-20261116">
+  <link rel="stylesheet" href="./daily.css?v=daily-20261117">
 </head>
-<body>
-  <div id="renewal-app"></div>
-  <dialog id="renewal-drawer" class="drawer" aria-labelledby="drawer-title"></dialog>
+<body class="daily-dashboard">
+  <div id="daily-app"></div>
+  <dialog id="daily-drawer" class="drawer daily-drawer" aria-labelledby="daily-drawer-title"></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./renewal.js?v=auto-renewal-overview-20261116"></script>
+  <script type="module" src="./daily.js?v=daily-20261117"></script>
 </body>
 </html>

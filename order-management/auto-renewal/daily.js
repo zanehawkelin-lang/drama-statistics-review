@@ -1,4 +1,4 @@
-import {APPS, AS_OF, DEFAULT_RANGE, DEMO_DATA, summarize, recordsFor} from './daily-data.js?v=daily-20261117';
+import {APPS, AS_OF, DEFAULT_RANGE, DEMO_DATA, STOP_TYPES, summarize, recordsFor} from './daily-data.js?v=stops-20261117';
 
 const icons = {
   orders:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
@@ -17,12 +17,13 @@ const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = value => Number(value || 0).toLocaleString('en-US');
 const money = value => Number(value || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-const labels = {success:'续订成功订单', recovered:'重试成功订单', failed:'续订失败订单', pending:'待重试订单', stopped:'停止续费订阅', voluntary:'主动取消订阅', terminated:'扣款失败终止订阅'};
+const labels = {success:'续订成功订单', recovered:'重试成功订单', failed:'续订失败订单', pending:'待重试订单', stopped:'停止续费订阅', voluntary:'用户取消订阅', terminated:'支付原因终止订阅', platform:'平台关闭订阅', unknown:'原因待确认订阅'};
+const stopMetrics = ['stopped', ...STOP_TYPES.map(item=>item.metric)];
 const today = AS_OF.slice(0,10);
 const params = new URLSearchParams(location.search);
 let filters = {...DEFAULT_RANGE, app: APPS.includes(params.get('app')) ? params.get('app') : ''};
 let sort = {field:'date', direction:'desc'};
-let summary, drawerMetric = 'success', drawerDay = '', recordQuery = '', lastFocus, toastTimer;
+let summary, drawerMetric = 'success', drawerDay = '', recordQuery = '', platformReason = '', lastFocus, toastTimer;
 const drawer = document.querySelector('#daily-drawer');
 
 document.querySelector('#daily-app').innerHTML = `
@@ -31,13 +32,13 @@ document.querySelector('#daily-app').innerHTML = `
 <main class="main daily-main"><div class="page-heading"><div class="heading-copy"><h1>自动续费总览</h1><span class="daily-page-description">按日查看续订、重试与停止续费</span></div><div class="heading-actions"><button class="text-button" id="definitions">${icon('info')}统计口径</button><button class="btn" id="lookup">${icon('search')}明细查询</button></div></div>
 <form id="daily-filters" class="surface daily-filters" novalidate><div class="daily-filter-fields"><div class="field daily-app-filter"><label for="app">所属应用</label><select id="app"><option value="">全部应用</option>${APPS.map(a=>`<option>${esc(a)}</option>`).join('')}</select></div><div class="field daily-date-filter"><label for="start">日期范围 <span class="filter-zone">UTC+8</span></label><div class="date-range"><input type="date" id="start" aria-label="开始日期" max="${today}" required><span>至</span><input type="date" id="end" aria-label="结束日期" max="${today}" required></div></div><div class="daily-quick-ranges" role="group" aria-label="快捷日期"><button type="button" data-range="today">今日</button><button type="button" data-range="yesterday">昨日</button><button type="button" data-range="7">近7天</button><button type="button" data-range="30">近30天</button></div><div class="daily-filter-actions"><button class="btn" type="button" id="reset">重置</button><button class="btn primary" type="submit">${icon('search')}查询</button></div></div><p id="filter-error" class="filter-error" role="alert"></p></form>
 <section class="daily-summary" aria-labelledby="summary-heading"><div class="summary-heading"><h2 id="summary-heading">时段汇总</h2><span id="summary-period"></span><span class="summary-scope">区间去重 · 待重试取期末状态</span></div><div class="metrics-grid" id="metrics" aria-live="polite"></div></section>
-<section class="surface daily-results" aria-labelledby="daily-heading"><div class="daily-result-toolbar"><div><h2 id="daily-heading">每日统计<span class="result-count" id="day-count"></span></h2><p>点击数量查看对应记录</p></div><button type="button" class="btn" id="export">${icon('export')}导出统计</button></div><div class="daily-table-scroll" role="region" aria-label="每日续费统计，可横向滚动" tabindex="0"><table class="daily-table"><thead><tr><th data-column="date">${sortButton('date','日期')}</th><th data-column="success">${sortButton('success','续订成功')}</th><th data-column="failed">${sortButton('failed','续订失败')}</th><th data-column="pending">${sortButton('pending','待重试')}<span class="column-note">截至当日</span></th><th data-column="stopped">${sortButton('stopped','停止续费')}</th><th>续订实付金额</th><th>操作</th></tr></thead><tbody id="daily-rows"></tbody></table></div><p class="dashboard-footnote">失败按发生日期统计，同一期可能先失败后成功；成功数与失败数不能直接相加。<button class="text-button" data-definitions>查看口径</button></p></section>
+<section class="surface daily-results" aria-labelledby="daily-heading"><div class="daily-result-toolbar"><div><h2 id="daily-heading">每日统计<span class="result-count" id="day-count"></span></h2><p>点击数量查看对应记录</p></div><button type="button" class="btn" id="export">${icon('export')}导出统计</button></div><div class="daily-table-scroll" role="region" aria-label="每日续费统计，可横向滚动" tabindex="0"><table class="daily-table"><thead><tr><th data-column="date">${sortButton('date','日期')}</th><th data-column="success">${sortButton('success','续订成功')}</th><th data-column="failed">${sortButton('failed','续订失败')}</th><th data-column="pending">${sortButton('pending','待重试')}<span class="column-note">截至当日</span></th><th data-column="stopped">${sortButton('stopped','停止续费')}</th><th>续订实付金额</th><th>操作</th></tr></thead><tbody id="daily-rows"></tbody></table></div></section>
 </main></div>`;
 
 function sortButton(field, label) { return `<button type="button" class="daily-sort" data-sort="${field}">${label}<span class="sort-glyph">${icon('down')}</span></button>`; }
 function shift(date, delta) { const d = new Date(date+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+delta); return d.toISOString().slice(0,10); }
 function cutLabel(day) { const end = day || filters.end; return end === today ? `${end.slice(5).replace('-','/')} ${AS_OF.slice(11,16)}` : `${end.slice(5).replace('-','/')} 23:59`; }
-function countButton(metric, value, day='', extra='') { return `<button class="count-link ${extra}" data-metric="${metric}" ${day?`data-day="${day}"`:''} aria-label="查看${day?day+' ':''}${labels[metric]} ${num(value)}${metric==='stopped'||metric==='voluntary'||metric==='terminated'?'条':'笔'}明细" ${value?'':'disabled'}>${num(value)}</button>`; }
+function countButton(metric, value, day='', extra='') { return `<button class="count-link ${extra}" data-metric="${metric}" ${day?`data-day="${day}"`:''} aria-label="查看${day?day+' ':''}${labels[metric]} ${num(value)}${stopMetrics.includes(metric)?'条':'笔'}明细" ${value?'':'disabled'}>${num(value)}</button>`; }
 function amountsMarkup(amounts, compact=false) { return amounts?.length ? amounts.map(a=>`<span class="${compact?'daily-amount':'metric-money'}"><strong>${money(a.amount)}</strong><span>${esc(a.currency)}</span></span>`).join('') : `<span class="${compact?'daily-amount':'metric-money'}"><strong>0.00</strong><span>—</span></span>`; }
 function render() {
   summary = summarize(filters);
@@ -46,11 +47,11 @@ function render() {
     <article class="metric-card"><h3>续订成功订单数</h3><div class="metric-number">${countButton('success',summary.success)}<span>笔</span></div><div class="metric-secondary">其中重试成功 ${countButton('recovered',summary.recovered,'','metric-sub-link')} 笔</div></article>
     <article class="metric-card"><h3>续订失败订单数</h3><div class="metric-number">${countButton('failed',summary.failed)}<span>笔</span></div><div class="metric-secondary">发生过失败，按续费期去重</div></article>
     <article class="metric-card"><h3>待重试订单数 <span class="metric-label-note">期末</span></h3><div class="metric-number">${countButton('pending',summary.pending)}<span>笔</span></div><div class="metric-secondary">截至 ${cutLabel()}，含此前积压</div></article>
-    <article class="metric-card"><h3>停止续费订阅数</h3><div class="metric-number">${countButton('stopped',summary.stopped)}<span>条</span></div><div class="metric-secondary stop-split">主动取消 ${countButton('voluntary',summary.voluntary,'','metric-sub-link')}<span>·</span>失败终止 ${countButton('terminated',summary.terminated,'','metric-sub-link')}</div></article>
+    <article class="metric-card"><h3>停止续费订阅数</h3><div class="metric-number">${countButton('stopped',summary.stopped)}<span>条</span></div><div class="metric-secondary stop-split">${STOP_TYPES.map(item=>`<span class="stop-breakdown-item">${item.label} ${countButton(item.metric,summary[item.metric],'','metric-sub-link')}</span>`).join('')}</div></article>
     <article class="metric-card metric-amount"><h3>续订实付金额</h3><div class="metric-money-list">${amountsMarkup(summary.amounts)}</div><div class="metric-secondary">按成功付款日统计，分币种展示</div></article>`;
   const days = sortedDays(summary.days);
   document.querySelector('#day-count').textContent = `共 ${days.length} 天`;
-  document.querySelector('#daily-rows').innerHTML = days.length ? days.map(d=>`<tr><td><span class="daily-date">${d.date}</span>${d.date===today?'<span class="today-label">统计中</span>':''}</td><td>${countButton('success',d.success,d.date)}<span class="cell-note">重试成功 ${countButton('recovered',d.recovered,d.date,'metric-sub-link')}</span></td><td>${countButton('failed',d.failed,d.date)}</td><td>${countButton('pending',d.pending,d.date)}</td><td>${countButton('stopped',d.stopped,d.date)}<span class="cell-note">主动 ${countButton('voluntary',d.voluntary,d.date,'metric-sub-link')}<span class="split-dot">·</span>失败终止 ${countButton('terminated',d.terminated,d.date,'metric-sub-link')}</span></td><td>${amountsMarkup(d.amounts,true)}</td><td><button type="button" class="text-button primary" data-metric="success" data-day="${d.date}" aria-label="查看${d.date}的续费明细">查看明细</button></td></tr>`).join('') : '<tr><td colspan="7"><div class="daily-empty"><strong>暂无符合条件的统计</strong><p>可调整应用或日期范围后查询。</p><button class="btn" data-reset>重置筛选</button></div></td></tr>';
+  document.querySelector('#daily-rows').innerHTML = days.length ? days.map(d=>`<tr><td><span class="daily-date">${d.date}</span>${d.date===today?'<span class="today-label">统计中</span>':''}</td><td>${countButton('success',d.success,d.date)}<span class="cell-note">重试成功 ${countButton('recovered',d.recovered,d.date,'metric-sub-link')}</span></td><td>${countButton('failed',d.failed,d.date)}</td><td>${countButton('pending',d.pending,d.date)}</td><td>${countButton('stopped',d.stopped,d.date)}<span class="cell-note"><button type="button" class="text-button stop-day-details" data-metric="stopped" data-day="${d.date}" ${d.stopped?'':'disabled'}>查看原因</button></span></td><td>${amountsMarkup(d.amounts,true)}</td><td><button type="button" class="text-button primary" data-metric="success" data-day="${d.date}" aria-label="查看${d.date}的续费明细">查看明细</button></td></tr>`).join('') : '<tr><td colspan="7"><div class="daily-empty"><strong>暂无符合条件的统计</strong><p>可调整应用或日期范围后查询。</p><button class="btn" data-reset>重置筛选</button></div></td></tr>';
   document.querySelectorAll('[data-column]').forEach(th=> { const active=th.dataset.column===sort.field; th.setAttribute('aria-sort',active?(sort.direction==='asc'?'ascending':'descending'):'none'); th.querySelector('button').dataset.direction=active?sort.direction:''; });
   document.querySelector('#export').disabled = !days.length;
   const presets={today:[today,today],yesterday:[shift(today,-1),shift(today,-1)],'7':[shift(today,-6),today],'30':[shift(today,-29),today]};
@@ -71,40 +72,49 @@ function applyFilters() {
 }
 function reset() {filters={...DEFAULT_RANGE,app:''};sort={field:'date',direction:'desc'};document.querySelector('#filter-error').textContent='';syncForm();render();}
 function currentRecords() {
-  const records=recordsFor(drawerMetric,filters,drawerDay||undefined);
+  const records=recordsFor(drawerMetric,filters,drawerDay||undefined).filter(r=>drawerMetric!=='platform'||!platformReason||r.reasonCode===platformReason);
   const query=recordQuery.trim().toLowerCase();
   return query?records.filter(r=>[r.userId,r.subscriptionId,r.orderId,r.billingId,...(r.attempts||[]).map(a=>a.transactionId)].some(v=>String(v||'').toLowerCase().includes(query))):records;
 }
-function recordClass(status, metric) { return metric==='stopped'||metric==='voluntary'||metric==='terminated'?'stopped':metric==='pending'?'pending':String(status).includes('成功')?'success':'failed'; }
-function recordMarkup(r,i) {
-  const isStop=['stopped','voluntary','terminated'].includes(drawerMetric);
+function recordClass(status, metric) { return stopMetrics.includes(metric)?'stopped':metric==='pending'?'pending':String(status).includes('成功')?'success':'failed'; }
+function stopFactsMarkup(r) {
+  const facts=[['停止时间',r.eventAt],['具体原因',r.reason||r.stopReason],['操作来源',r.source],['操作人',r.operator||'—']];
+  if(!r.refund) facts.push(['会员权益到期',r.entitlementEnd||'—']);
+  const failure=(r.attempts||[]).filter(a=>a.status==='失败').at(-1);
+  if(failure) facts.push(['最近扣款失败原因',failure.reason||'未提供']);
+  if(r.refund) facts.push(['退款订单',r.refund.orderId],['退款类型',r.refund.type==='partial'?'部分退款':'全额退款'],['退款金额',money(r.refund.amount)+' '+r.refund.currency],['退款成功时间',r.refund.succeededAt]);
+  return facts.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value||'—')}</dd></div>`).join('');
+}
+function recordMarkup(r) {
+  const isStop=stopMetrics.includes(drawerMetric);
   const isPaid=['success','recovered'].includes(drawerMetric);
   const amountLabel=isPaid?'实付金额':drawerMetric==='pending'?'预计重试金额':'请求扣款金额';
-  const timestampLabel=isStop?'停止时间':drawerMetric==='pending'?'最近失败时间':isPaid?'成功时间':'失败时间';
+  const timestampLabel=drawerMetric==='pending'?'最近失败时间':isPaid?'成功时间':'失败时间';
   const attempted=r.attempts||[];
-  const amount = isPaid ? (r.paidAmount ?? r.amount) : r.amount;
-  return `<article class="daily-record"><div class="record-top"><strong class="record-order">${esc(isStop?r.subscriptionId:r.orderId||r.billingId)}</strong><span class="status-pill ${recordClass(r.status,drawerMetric)}">${esc(drawerMetric==='recovered'?'重试成功':r.status)}</span></div><div class="record-meta"><span>用户ID：${esc(r.userId)}</span><span>${esc(r.app)}</span><span>${esc(r.product)}</span></div><dl class="record-facts"><div><dt>${timestampLabel}</dt><dd>${esc(r.eventAt||'—')}</dd></div><div><dt>${isStop?'停止原因':amountLabel}</dt><dd>${isStop?esc(r.reason||r.stopReason||'—'):money(amount)+' '+esc(r.currency||'')}</dd></div><div><dt>${isStop?'会员权益到期':drawerMetric==='pending'?'下次重试':'订阅号'}</dt><dd>${esc(isStop?r.entitlementEnd||'—':drawerMetric==='pending'?r.nextAt||'待更新':r.subscriptionId)}</dd></div></dl>${r.reason&&!isStop?`<p class="record-reason">${esc(r.reason)}</p>`:''}${attempted.length&&!isStop?`<details class="record-attempts"><summary class="attempt-toggle">扣款尝试 · ${attempted.length} 次</summary><ol class="attempt-list">${attempted.map((a,j)=>`<li class="attempt-row"><div class="attempt-row-top"><strong>第${j+1}次尝试</strong><span class="status-pill ${String(a.status).includes('成功')?'success':a.status==='处理中'?'pending':'failed'}">${esc(a.status)}</span><time>${esc(a.at)}</time></div><p>${String(a.status).includes('成功')?'实付':'请求扣款'} ${money(a.amount)} ${esc(a.currency)}${a.reason?' · '+esc(a.reason):''}</p>${a.transactionId?`<p class="transaction-line">三方交易号：${esc(a.transactionId)}</p>`:''}</li>`).join('')}</ol></details>`:''}</article>`;
+  const amount=isPaid?(r.paidAmount??r.amount):r.amount;
+  const facts=isStop?stopFactsMarkup(r):`<div><dt>${timestampLabel}</dt><dd>${esc(r.eventAt||'—')}</dd></div><div><dt>${amountLabel}</dt><dd>${money(amount)} ${esc(r.currency||'')}</dd></div><div><dt>${drawerMetric==='pending'?'下次重试':'订阅号'}</dt><dd>${esc(drawerMetric==='pending'?r.nextAt||'待更新':r.subscriptionId)}</dd></div>`;
+  return `<article class="daily-record"><div class="record-top"><strong class="record-order">${esc(isStop?r.subscriptionId:r.orderId||r.billingId)}</strong><span class="status-pill ${recordClass(r.status,drawerMetric)}">${esc(drawerMetric==='recovered'?'重试成功':r.status)}</span></div><div class="record-meta"><span>用户ID：${esc(r.userId)}</span><span>${esc(r.app)}</span><span>${esc(r.product)}</span></div><dl class="record-facts">${facts}</dl>${r.reason&&!isStop?`<p class="record-reason">${esc(r.reason)}</p>`:''}${attempted.length&&!isStop?`<details class="record-attempts"><summary class="attempt-toggle">扣款尝试 · ${attempted.length} 次</summary><ol class="attempt-list">${attempted.map((a,j)=>`<li class="attempt-row"><div class="attempt-row-top"><strong>第${j+1}次尝试</strong><span class="status-pill ${String(a.status).includes('成功')?'success':a.status==='处理中'?'pending':'failed'}">${esc(a.status)}</span><time>${esc(a.at)}</time></div><p>${String(a.status).includes('成功')?'实付':'请求扣款'} ${money(a.amount)} ${esc(a.currency)}${a.reason?' · '+esc(a.reason):''}</p>${a.transactionId?`<p class="transaction-line">三方交易号：${esc(a.transactionId)}</p>`:''}</li>`).join('')}</ol></details>`:''}</article>`;
 }
 function drawerTabs() {
-  const stopping=['stopped','voluntary','terminated'].includes(drawerMetric);
+  const stopping=stopMetrics.includes(drawerMetric);
   const family=[['success','成功'],['recovered','重试成功'],['failed','失败'],['pending','待重试'],['stopped','停止续费']];
   const main=family.map(([metric,label])=>{const active=metric===drawerMetric||(metric==='stopped'&&stopping);return `<button type="button" class="drawer-tab ${active?'active':''}" data-drawer-metric="${metric}" aria-pressed="${active}">${label}</button>`;}).join('');
-  return main+(stopping?'<div class="stop-subtabs" role="group" aria-label="停止原因分类">'+[['stopped','全部停止'],['voluntary','主动取消'],['terminated','失败终止']].map(([metric,label])=>`<button type="button" class="${metric===drawerMetric?'active':''}" data-drawer-metric="${metric}" aria-pressed="${metric===drawerMetric}">${label}</button>`).join('')+'</div>':'');
+  return main+(stopping?'<div class="stop-subtabs" role="group" aria-label="停止类型分类">'+[['stopped','全部停止'],...STOP_TYPES.map(item=>[item.metric,item.label])].map(([metric,label])=>`<button type="button" class="${metric===drawerMetric?'active':''}" data-drawer-metric="${metric}" aria-pressed="${metric===drawerMetric}">${label}</button>`).join('')+'</div>':'')+(drawerMetric==='platform'?`<div class="field platform-reason-field"><label for="platform-reason">关闭原因</label><select id="platform-reason"><option value="">全部原因</option><option value="manual_close" ${platformReason==='manual_close'?'selected':''}>后台人工关闭</option><option value="refund_succeeded" ${platformReason==='refund_succeeded'?'selected':''}>退款成功自动关闭</option></select></div>`:'');
 }
 function renderRecords() {
   const records=currentRecords();
   document.querySelector('#drawer-tabs').innerHTML=drawerTabs();
-  document.querySelector('#drawer-record-count').textContent=`共 ${num(records.length)} ${['stopped','voluntary','terminated'].includes(drawerMetric)?'条订阅':'笔订单'}`;
+  document.querySelector('#drawer-record-count').textContent=`共 ${num(records.length)} ${stopMetrics.includes(drawerMetric)?'条订阅':'笔订单'}`;
   document.querySelector('#drawer-records').innerHTML=records.length?records.map(recordMarkup).join(''):`<div class="daily-empty"><strong>${recordQuery?'没有匹配的记录':'该条件下暂无'+labels[drawerMetric]}</strong><p>${recordQuery?'请核对编号，或清空输入查看全部记录。':'可切换上方分类，或调整看板日期和应用。'}</p>${recordQuery?'<button type="button" class="btn" data-clear-record-query>清空查询</button>':''}</div>`;
   document.querySelector('#drawer-export').disabled=!records.length;
-  document.querySelector('#drawer-scope-note').textContent=drawerMetric==='pending'?`截至 ${cutLabel(drawerDay)} 的待重试存量，含此前失败订单`:'订单按续费期去重；停止续费按订阅去重';
+  document.querySelector('#drawer-scope-note').textContent=drawerMetric==='pending'?`截至 ${cutLabel(drawerDay)} 的待重试存量，含此前失败订单`:stopMetrics.includes(drawerMetric)?'按实际关闭成功时间统计；同一订阅不重复计数':'订单按续费期去重';
   const reasons = new Map();
   if(drawerMetric==='failed') for(const r of records) {const reason=r.reason||'未提供原因';reasons.set(reason,(reasons.get(reason)||0)+1);}
   const reasonBox=document.querySelector('#failure-reasons');reasonBox.hidden=!reasons.size;
   reasonBox.innerHTML=reasons.size?'<span>失败原因</span>'+[...reasons].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([reason,count])=>`<span class="reason-count">${esc(reason)} <strong>${count}</strong></span>`).join(''):'';
 }
 function openRecords(metric='success',day='',focusSearch=false) {
-  lastFocus=document.activeElement; drawerMetric=metric;drawerDay=day;recordQuery='';
+  lastFocus=document.activeElement; drawerMetric=metric;drawerDay=day;recordQuery='';platformReason='';
   drawer.innerHTML=`<div class="drawer-head"><div><h2 id="daily-drawer-title">续费明细</h2><p class="drawer-subtitle">${esc(day||filters.start+' 至 '+filters.end)} · ${esc(filters.app||'全部应用')} · UTC+8</p></div><button class="icon-button" data-close aria-label="关闭明细">${icon('close')}</button></div><div class="drawer-body"><div class="drawer-search"><label for="record-query">用户 / 订阅 / 订单查询</label><div><input id="record-query" type="search" placeholder="用户ID、订阅号、订单号或三方交易号" autocomplete="off"><button class="btn" id="drawer-export">${icon('export')}导出明细</button></div></div><div class="drawer-filter-bar" id="drawer-tabs" role="group" aria-label="明细分类"></div><div class="drawer-record-meta"><span id="drawer-record-count"></span><span id="drawer-scope-note"></span></div><div class="failure-reasons" id="failure-reasons" hidden></div><div class="daily-records" id="drawer-records"></div></div>`;
   renderRecords();
   document.querySelector('#record-query').addEventListener('input',e=>{recordQuery=e.target.value;renderRecords();});
@@ -114,7 +124,7 @@ function openRecords(metric='success',day='',focusSearch=false) {
 }
 function definitions() {
   lastFocus=document.activeElement;
-  drawer.innerHTML=`<div class="drawer-head"><div><h2 id="daily-drawer-title">统计口径</h2><p class="drawer-subtitle">UTC+8 · 按实际业务发生日统计</p></div><button class="icon-button" data-close aria-label="关闭统计口径">${icon('close')}</button></div><div class="drawer-body definition-copy"><h3>续订成功订单数</h3><p>按成功付款时间归日，按续费期去重。首次购买与手动复购不计入。重试成功是成功订单中的一部分，不额外相加。</p><h3>续订失败订单数</h3><p>当天发生过失败的续费订单，按续费期去重。同一期失败后重试成功，仍保留失败发生当天的记录；成功数与失败数可能交叉，不能相加作为订单总数。</p><h3>待重试订单数</h3><p>截至所选日期末，已失败、尚未成功且仍安排重试的订单。今日统计截至 ${esc(AS_OF)}。包含此前失败的积压订单，不只看当天新增失败；每日待重试不能相加。</p><h3>停止续费订阅数</h3><p>按关闭自动续费的发生时间归日，按订阅去重。拆分为用户主动取消，以及扣款失败后系统确认不再继续扣款。失败但仍在重试的订阅不计入停止。取消自动续费后，已有会员权益仍按到期时间生效。</p><h3>续订实付金额</h3><p>汇总成功续费订单的实付金额，按成功付款日统计，逐币种展示，不做跨币种求和。不表示扣除退款后的净额。</p><h3>区间汇总与每日统计</h3><p>顶部对所选时段内的订单／订阅去重，同一订单可能在多天发生失败，因此区间去重数不一定等于每日数量之和。待重试始终取区间最后一天的存量。</p><h3>跨日重试示例</h3><p>11月16日扣款失败，11月17日重试成功：失败记在16日，成功及重试成功记在17日，不回填到16日。</p></div>`;
+  drawer.innerHTML=`<div class="drawer-head"><div><h2 id="daily-drawer-title">统计口径</h2><p class="drawer-subtitle">UTC+8 · 按实际业务发生日统计</p></div><button class="icon-button" data-close aria-label="关闭统计口径">${icon('close')}</button></div><div class="drawer-body definition-copy"><h3>续订成功订单数</h3><p>按成功付款时间归日，按续费期去重。首次购买与手动复购不计入。重试成功是成功订单中的一部分，不额外相加。</p><h3>续订失败订单数</h3><p>当天发生过失败的续费订单，按续费期去重。同一期失败后重试成功，仍保留失败发生当天的记录；成功数与失败数可能交叉，不能相加作为订单总数。</p><h3>待重试订单数</h3><p>截至所选日期末，已失败、尚未成功且仍安排重试的订单。今日统计截至 ${esc(AS_OF)}。包含此前失败的积压订单，不只看当天新增失败；每日待重试不能相加。</p><h3>停止续费订阅数</h3><p>按自动续费实际关闭成功的时间归日，同一订阅不重复计数。分为用户取消、支付原因终止、平台关闭、原因待确认四类。客服按用户要求代取消归用户取消；后台主动关闭归平台关闭。仍在重试、暂时暂停或仅会员权益到期，不计入停止。</p><h3>退款成功自动关闭</h3><p>退款成功后自动关闭退款订单对应订阅的后续续费，不影响用户的其他订阅。全额和部分退款均触发；当前演示业务只有全额退款。停止类型为平台关闭，具体原因为退款成功自动关闭，操作来源为系统自动。退款成功但关闭续费失败时标记待处理，未关闭成功不计入停止；已关闭订阅再次退款不重复计数。续费关闭与会员权益处理分开记录。</p><h3>续订实付金额</h3><p>汇总成功续费订单的实付金额，按成功付款日统计，逐币种展示，不做跨币种求和。不表示扣除退款后的净额。</p><h3>区间汇总与每日统计</h3><p>顶部对所选时段内的订单／订阅去重，同一订单可能在多天发生失败，因此区间去重数不一定等于每日数量之和。待重试始终取区间最后一天的存量。</p><h3>跨日重试示例</h3><p>11月16日扣款失败，11月17日重试成功：失败记在16日，成功及重试成功记在17日，不回填到16日。</p></div>`;
   if(!drawer.open)drawer.showModal();drawer.scrollTop=0;drawer.querySelector('[data-close]').focus();
 }
 function download(name, rows) {
@@ -126,14 +136,14 @@ function download(name, rows) {
 function sortedDays(days) { return [...days].sort((a,b)=>sort.field==='date' ? a.date.localeCompare(b.date)*(sort.direction==='asc'?1:-1) : (a[sort.field]-b[sort.field])*(sort.direction==='asc'?1:-1)||b.date.localeCompare(a.date)); }
 function exportDays() {
   const currencies=[...new Set(DEMO_DATA.bills.filter(b=>!filters.app||b.app===filters.app).map(b=>b.currency))].sort((a,b)=>a===b?0:a==='USD'?-1:b==='USD'?1:a.localeCompare(b));
-  const rows=[['日期（UTC+8）','所属应用','续订成功订单数','其中重试成功','续订失败订单数','待重试订单数（截至当日）','停止续费订阅数','主动取消','失败终止',...currencies.map(c=>'续订实付金额（'+c+'）')]];
-  for(const d of sortedDays(summary.days)) rows.push([d.date,filters.app||'全部应用',d.success,d.recovered,d.failed,d.pending,d.stopped,d.voluntary,d.terminated,...currencies.map(c=>d.amounts.find(a=>a.currency===c)?.amount||0)]);
+  const rows=[['日期（UTC+8）','所属应用','续订成功订单数','其中重试成功','续订失败订单数','待重试订单数（截至当日）','停止续费订阅数',...STOP_TYPES.map(item=>item.label),...currencies.map(c=>'续订实付金额（'+c+'）')]];
+  for(const d of sortedDays(summary.days)) rows.push([d.date,filters.app||'全部应用',d.success,d.recovered,d.failed,d.pending,d.stopped,...STOP_TYPES.map(item=>d[item.metric]),...currencies.map(c=>d.amounts.find(a=>a.currency===c)?.amount||0)]);
   download(`自动续费每日统计_${filters.start}_${filters.end}.csv`,rows);
 }
 function exportRecords() {
-  const paid=['success','recovered'].includes(drawerMetric), stop=['stopped','voluntary','terminated'].includes(drawerMetric);
-  const rows=[['记录类型','用户ID','所属应用','订阅号','续费订单号','商品','发生时间（UTC+8）','结果','原因',paid?'实付金额':stop?'金额（不适用）':'请求／预计金额','币种','下次重试时间','会员权益到期时间']];
-  for(const r of currentRecords()) rows.push([labels[drawerMetric],r.userId,r.app,r.subscriptionId,r.orderId||'',r.product,r.eventAt,r.status,r.reason||r.stopReason||'',stop?'':paid?r.paidAmount??r.amount:r.amount,stop?'':r.currency,r.nextAt||'',r.entitlementEnd||'']);
+  const paid=['success','recovered'].includes(drawerMetric), stop=stopMetrics.includes(drawerMetric);
+  const rows=[['记录类型','用户ID','所属应用','订阅号','续费订单号','商品','发生时间（UTC+8）','结果','原因',paid?'实付金额':stop?'金额（不适用）':'请求／预计金额','币种','下次重试时间','会员权益到期时间','停止类型','操作来源','操作人','退款订单号','退款类型','退款金额','退款币种','退款成功时间']];
+  for(const r of currentRecords()) rows.push([labels[drawerMetric],r.userId,r.app,r.subscriptionId,r.orderId||'',r.product,r.eventAt,r.status,r.reason||r.stopReason||'',stop?'':paid?r.paidAmount??r.amount:r.amount,stop?'':r.currency,r.nextAt||'',r.entitlementEnd||'',stop?r.stopReason:'',stop?r.source:'',stop?r.operator:'',r.refund?.orderId||'',r.refund?(r.refund.type==='partial'?'部分退款':'全额退款'):'',r.refund?.amount??'',r.refund?.currency||'',r.refund?.succeededAt||'']);
   download(`${labels[drawerMetric]}_${drawerDay||filters.start+'_'+filters.end}.csv`,rows);
 }
 
@@ -145,15 +155,15 @@ document.querySelector('#export').addEventListener('click',exportDays);
 document.querySelector('#collapse-sidebar').addEventListener('click',()=>document.querySelector('#shell').classList.toggle('compact'));
 document.addEventListener('click',e=>{
   const button=e.target.closest('button'); if(!button)return;
-  if(button.hasAttribute('data-definitions'))definitions();
-  else if(button.hasAttribute('data-reset'))reset();
+  if(button.hasAttribute('data-reset'))reset();
   else if(button.hasAttribute('data-close'))drawer.close();
   else if(button.dataset.metric)openRecords(button.dataset.metric,button.dataset.day||'');
-  else if(button.dataset.drawerMetric){drawerMetric=button.dataset.drawerMetric;renderRecords();}
+  else if(button.dataset.drawerMetric){drawerMetric=button.dataset.drawerMetric;platformReason='';renderRecords();}
   else if(button.hasAttribute('data-clear-record-query')){recordQuery='';document.querySelector('#record-query').value='';renderRecords();}
   else if(button.dataset.sort){sort={field:button.dataset.sort,direction:sort.field===button.dataset.sort&&sort.direction==='desc'?'asc':'desc'};render();}
   else if(button.dataset.range){const range=button.dataset.range;document.querySelector('#start').value=range==='today'?today:range==='yesterday'?shift(today,-1):shift(today,1-Number(range));document.querySelector('#end').value=range==='yesterday'?shift(today,-1):today;applyFilters();}
 });
+drawer.addEventListener('change',e=>{if(e.target.id==='platform-reason'){platformReason=e.target.value;renderRecords();document.querySelector('#platform-reason').focus();}});
 drawer.addEventListener('close',()=>{if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});});
 syncForm();render();
 if(params.get('userId')) { openRecords('success','',true);recordQuery=params.get('userId');document.querySelector('#record-query').value=recordQuery;renderRecords(); }

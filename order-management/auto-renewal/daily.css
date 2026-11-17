@@ -309,8 +309,8 @@
 .metric-number>span{color:var(--muted);font-size:11px;white-space:nowrap}
 .metric-sub-link{font-size:inherit;font-weight:500;min-height:0;line-height:inherit}
 .metric-secondary .metric-sub-link{font-size:11px}
-.stop-split{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap}
-.stop-split>span{margin:0 2px!important;color:#b3b6c2}
+.stop-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px}
+.stop-split>.stop-breakdown-item{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin:0;color:var(--muted);white-space:nowrap}
 .metric-money>strong{font:inherit;font-weight:600}
 .metric-money>span{font-size:10px;line-height:1.6;font-weight:400;color:var(--muted);letter-spacing:0}
 .daily-result-toolbar h2{margin:0;font-size:14px;line-height:1.6;font-weight:600}
@@ -368,7 +368,7 @@
 .failure-reasons{display:flex;align-items:baseline;flex-wrap:wrap;gap:7px 18px;background:var(--soft);border-radius:6px;padding:11px 13px;margin-top:15px;color:#626d80;font-size:11px;line-height:1.7}
 .failure-reasons>span:first-child{font-weight:550;color:#48556a}
 .reason-count strong{color:#394458;font-weight:550;margin-left:5px}
-.stop-subtabs{display:flex;flex-basis:100%;gap:7px;padding:10px 0 12px}
+.stop-subtabs{display:flex;flex:0 0 100%;flex-wrap:wrap;gap:7px;padding:10px 0 12px}
 .stop-subtabs button{border:1px solid var(--line);border-radius:5px;padding:5px 9px;background:#fff;font-size:11px;color:var(--muted)}
 .stop-subtabs button.active{background:var(--accent-light);color:var(--accent);border-color:#ded8f4}
 @media(max-width:1200px){.metric-number>.count-link{font-size:28px}}
@@ -411,3 +411,12 @@
   .attempt-row-top time{margin-left:0;width:100%}
   .failure-reasons{font-size:10px;gap:4px 12px;padding:10px 11px}
 }
+
+/* Stop types remain compact; detailed reasons belong in the records drawer. */
+.stop-day-details{font-size:10px;color:var(--muted);min-height:24px;padding:0}
+.daily-drawer .drawer-filter-bar{flex-wrap:wrap;overflow-x:visible;white-space:normal}
+.platform-reason-field{flex:0 0 230px;width:230px;margin:0 0 14px}
+.platform-reason-field label{font-size:11px;color:var(--muted);margin-bottom:5px}
+.platform-reason-field select{height:34px;font-size:12px}
+@media(max-width:1200px){.stop-split{grid-template-columns:1fr;max-width:150px}}
+@media(max-width:560px){.platform-reason-field{flex-basis:100%;width:100%}.stop-subtabs{gap:6px}}

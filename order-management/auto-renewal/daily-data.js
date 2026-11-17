@@ -2,6 +2,12 @@
 export const AS_OF = '2026-11-17 18:00:00';
 export const APPS = ['DramaVideo', 'QuikDrama', 'Prutora'];
 export const DEFAULT_RANGE = {start: '2026-11-11', end: '2026-11-17'};
+export const STOP_TYPES = [
+  {metric: 'voluntary', type: 'voluntary', label: '用户取消'},
+  {metric: 'terminated', type: 'payment_failure', label: '支付原因终止'},
+  {metric: 'platform', type: 'platform', label: '平台关闭'},
+  {metric: 'unknown', type: 'unknown', label: '原因待确认'},
+];
 
 const dayOf = value => String(value || '').slice(0, 10);
 const shiftDay = (day, count) => {
@@ -12,7 +18,7 @@ const shiftDay = (day, count) => {
 const at = (day, time) => `${day} ${time}:00`;
 const uniqueAttempts = attempts => [...new Map(attempts.map(a => [a.id, a])).values()]
   .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
-const reasonLabel = type => type === 'voluntary' ? '主动取消' : '扣款失败终止';
+const reasonLabel = type => STOP_TYPES.find(item => item.type === type)?.label || '原因待确认';
 const amountList = rows => {
   const cents = new Map();
   for (const row of rows) cents.set(row.currency, (cents.get(row.currency) || 0) + Math.round(row.amount * 100));
@@ -91,6 +97,8 @@ export const FIXTURE_IDS = {
   crossDay: 'DEMO-BILL-FIX-CROSS', sameDay: 'DEMO-BILL-FIX-SAME',
   pending: 'DEMO-BILL-FIX-PENDING', terminated: 'DEMO-BILL-FIX-TERMINATED',
   voluntary: 'DEMO-SUB-FIX-VOLUNTARY',
+  manual: 'DEMO-SUB-FIX-MANUAL', unknown: 'DEMO-SUB-FIX-UNKNOWN',
+  service: 'DEMO-SUB-FIX-SERVICE', refund: 'DEMO-BILL-FIX-SAME',
 };
 const cross = makeBill('FIX-CROSS', '2026-11-16', 'DramaVideo', 3, {userId: '810001'});
 const same = makeBill('FIX-SAME', '2026-11-17', 'DramaVideo', 2, {userId: '810001'});
@@ -104,13 +112,57 @@ stops.push({
   reason: '用户主动关闭自动续费', entitlementEnd: '2026-11-30 09:45:00', currency: 'USD', amount: null, attempts: [],
 });
 
+// Confirmed closure examples. Refund amounts never reduce the gross renewal-paid metric.
+stops.push(
+  {
+    id: 'DEMO-STOP-FIX-MANUAL', subscriptionId: FIXTURE_IDS.manual, userId: '810002',
+    app: 'DramaVideo', product: '30天会员', eventAt: '2026-11-16 16:20:00', stopType: 'platform',
+    reasonCode: 'manual_close', reason: '后台人工关闭', source: '管理后台', operator: '运营（演示）',
+    entitlementEnd: '2026-11-28 09:00:00', closureStatus: 'succeeded',
+  },
+  {
+    ...same, id: 'DEMO-STOP-FIX-REFUND', eventAt: '2026-11-17 17:35:00', stopType: 'platform',
+    reasonCode: 'refund_succeeded', reason: '退款成功自动关闭', source: '系统自动', operator: '',
+    entitlementEnd: '', closureStatus: 'succeeded',
+    refund: {id: 'DEMO-REFUND-FIX-SAME', orderId: same.orderId, subscriptionId: same.subscriptionId,
+      status: 'succeeded', type: 'full', amount: same.amount, currency: same.currency, succeededAt: '2026-11-17 17:30:00'},
+  },
+  {
+    id: 'DEMO-STOP-FIX-SERVICE', subscriptionId: FIXTURE_IDS.service, userId: '810004',
+    app: 'DramaVideo', product: '7天会员', eventAt: '2026-11-17 16:45:00', stopType: 'voluntary',
+    reasonCode: 'user_requested', reason: '客服按用户要求取消', source: '客服后台', operator: '客服（演示）',
+    entitlementEnd: '2026-11-22 09:00:00', closureStatus: 'succeeded',
+  },
+  {
+    id: 'DEMO-STOP-FIX-UNKNOWN', subscriptionId: FIXTURE_IDS.unknown, userId: '810003',
+    app: 'QuikDrama', product: '30天会员', eventAt: '2026-11-17 17:10:00', stopType: 'unknown',
+    reason: '渠道已确认关闭，未提供具体原因', source: '支付渠道', operator: '',
+    entitlementEnd: '2026-11-25 09:00:00', closureStatus: 'succeeded',
+  },
+);
+
 export const DEMO_DATA = {bills, stops, asOf: AS_OF};
 
 /** Build pure query functions; injections allow checks of counting rules without UI coupling. */
 export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = AS_OF} = {}) {
   const allBills = [...new Map(rawBills.filter(b => !b.purchaseType || b.purchaseType === 'auto_renewal')
     .map(b => [b.billingId, {...b, attempts: uniqueAttempts(b.attempts || [])}])).values()];
-  const allStops = [...new Map(rawStops.map(s => [s.id, s])).values()].sort((a, b) => a.eventAt.localeCompare(b.eventAt) || a.id.localeCompare(b.id));
+  // No reactivation flow in this prototype: repeated closure callbacks/refunds must not add new stops.
+  const stopBySubscription = new Map();
+  for (const row of [...rawStops].sort((a, b) => a.eventAt.localeCompare(b.eventAt) || a.id.localeCompare(b.id))) {
+    if (row.closureStatus && row.closureStatus !== 'succeeded') continue;
+    if (row.reasonCode === 'refund_succeeded' && (row.refund?.status !== 'succeeded'
+      || row.refund.subscriptionId !== row.subscriptionId || row.refund.succeededAt > row.eventAt)) continue;
+    const key = `${row.app}:${row.subscriptionId}`;
+    if (!stopBySubscription.has(key)) {
+      const stopType = STOP_TYPES.some(item => item.type === row.stopType) ? row.stopType : 'unknown';
+      stopBySubscription.set(key, {...row, stopType,
+        source: row.source || (stopType === 'voluntary' ? '用户端' : stopType === 'payment_failure' ? '系统自动' : '未提供'),
+        operator: row.operator || '',
+      });
+    }
+  }
+  const allStops = [...stopBySubscription.values()];
 
   function interval(filters = {}, selectedDay) {
     const start = selectedDay || filters.start || DEFAULT_RANGE.start;
@@ -126,14 +178,14 @@ export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = 
   }
   const applies = (row, range) => !range.app || row.app === range.app;
   const inRange = (time, range) => time >= `${range.start} 00:00:00` && time <= range.cutoff;
-  const stopAt = (subscriptionId, cutoff) => allStops.filter(s => s.subscriptionId === subscriptionId && s.eventAt <= cutoff).at(-1);
+  const stopAt = (bill, cutoff) => allStops.find(s => s.app === bill.app && s.subscriptionId === bill.subscriptionId && s.eventAt <= cutoff);
   const known = (bill, cutoff) => bill.attempts.filter(a => a.at <= cutoff);
 
   function billRecord(bill, range, event, status, reason = '') {
     const attempts = known(bill, range.cutoff);
     const success = attempts.find(a => a.status === '成功');
     const latest = attempts.at(-1);
-    const stop = stopAt(bill.subscriptionId, range.cutoff);
+    const stop = stopAt(bill, range.cutoff);
     const canRetry = !success && !stop && latest?.status === '失败' && !!latest.nextAt;
     return {
       ...bill, id: bill.billingId, eventAt: event.at, status, reason,
@@ -144,18 +196,18 @@ export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = 
   }
 
   function recordsFor(metric, filters = {}, selectedDay) {
-    if (!['success', 'recovered', 'failed', 'pending', 'stopped', 'voluntary', 'terminated'].includes(metric)) throw new RangeError('不支持的指标');
+    if (!['success', 'recovered', 'failed', 'pending', 'stopped', ...STOP_TYPES.map(item => item.metric)].includes(metric)) throw new RangeError('不支持的指标');
     const range = interval(filters, selectedDay);
     if (range.futureOnly) return [];
     let records = [];
-    if (['stopped', 'voluntary', 'terminated'].includes(metric)) {
+    if (metric === 'stopped' || STOP_TYPES.some(item => item.metric === metric)) {
       const latestStops = new Map();
-      for (const stop of allStops.filter(s => applies(s, range) && inRange(s.eventAt, range))) latestStops.set(stop.subscriptionId, stop);
+      for (const stop of allStops.filter(s => applies(s, range) && inRange(s.eventAt, range))) latestStops.set(`${stop.app}:${stop.subscriptionId}`, stop);
       records = [...latestStops.values()]
-        .filter(s => metric === 'stopped' || s.stopType === (metric === 'voluntary' ? 'voluntary' : 'payment_failure'))
+        .filter(s => metric === 'stopped' || s.stopType === STOP_TYPES.find(item => item.metric === metric)?.type)
         .map(s => {
           const bill = allBills.find(b => b.billingId === s.billingId);
-          return {...s, status: s.stopType === 'voluntary' ? '主动取消' : '失败终止', stopReason: reasonLabel(s.stopType), nextAt: '', paidAmount: null, attempts: bill ? known(bill, range.cutoff) : []};
+          return {...s, status: reasonLabel(s.stopType), stopReason: reasonLabel(s.stopType), nextAt: '', paidAmount: null, attempts: bill ? known(bill, range.cutoff) : []};
         });
     } else if (['success', 'recovered', 'failed', 'pending'].includes(metric)) {
       for (const bill of allBills.filter(b => applies(b, range))) {
@@ -163,7 +215,7 @@ export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = 
         if (!attempts.length) continue;
         const success = attempts.find(a => a.status === '成功');
         const latest = attempts.at(-1);
-        const stop = stopAt(bill.subscriptionId, range.cutoff);
+        const stop = stopAt(bill, range.cutoff);
         const recovery = success && attempts.some(a => a.status === '失败' && a.at <= success.at);
         if ((metric === 'success' || metric === 'recovered') && success && inRange(success.at, range) && (metric !== 'recovered' || recovery)) {
           records.push(billRecord(bill, range, success, '成功', recovery ? '失败后重试成功' : '自动续费扣款成功'));
@@ -191,6 +243,8 @@ export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = 
       failed: recordsFor('failed', filters, day).length, pending: recordsFor('pending', filters, day).length,
       stopped: stopped.length, voluntary: stopped.filter(s => s.stopType === 'voluntary').length,
       terminated: stopped.filter(s => s.stopType === 'payment_failure').length,
+      platform: stopped.filter(s => s.stopType === 'platform').length,
+      unknown: stopped.filter(s => s.stopType === 'unknown').length,
       amounts: amountList(success.map(s => ({currency: s.currency, amount: s.paidAmount}))),
     };
   }

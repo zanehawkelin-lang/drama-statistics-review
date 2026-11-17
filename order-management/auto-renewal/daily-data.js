@@ -1,7 +1,6 @@
 // Synthetic demonstration data only. All timestamps use fixed UTC+8 wall time.
 export const AS_OF = '2026-11-17 18:00:00';
 export const APPS = ['DramaVideo', 'QuikDrama', 'Prutora'];
-export const DEFAULT_RANGE = {start: '2026-11-11', end: '2026-11-17'};
 export const STOP_TYPES = [
   {metric: 'voluntary', type: 'voluntary', label: '用户取消'},
   {metric: 'terminated', type: 'payment_failure', label: '支付原因终止'},
@@ -15,6 +14,7 @@ const shiftDay = (day, count) => {
   date.setUTCDate(date.getUTCDate() + count);
   return date.toISOString().slice(0, 10);
 };
+export const DEFAULT_RANGE = {start: shiftDay(dayOf(AS_OF), -7), end: shiftDay(dayOf(AS_OF), -1)};
 const at = (day, time) => `${day} ${time}:00`;
 const uniqueAttempts = attempts => [...new Map(attempts.map(a => [a.id, a])).values()]
   .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
@@ -173,19 +173,21 @@ export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = 
     if (start > end) throw new RangeError('开始日期不能晚于结束日期');
     const count = Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86400000) + 1;
     if (count > 366) throw new RangeError('请查询不超过366天的日期范围');
-    const cutoff = end >= dayOf(asOf) ? asOf : `${end} 23:59:59`;
-    return {app: filters.app || '', start, end, cutoff, futureOnly: start > dayOf(asOf), count};
+    const complete = end < dayOf(asOf);
+    const cutoff = complete ? `${shiftDay(end, 1)} 00:00:00` : asOf;
+    return {app: filters.app || '', start, end, cutoff, complete, futureOnly: start > dayOf(asOf), count};
   }
   const applies = (row, range) => !range.app || row.app === range.app;
-  const inRange = (time, range) => time >= `${range.start} 00:00:00` && time <= range.cutoff;
-  const stopAt = (bill, cutoff) => allStops.find(s => s.app === bill.app && s.subscriptionId === bill.subscriptionId && s.eventAt <= cutoff);
-  const known = (bill, cutoff) => bill.attempts.filter(a => a.at <= cutoff);
+  const beforeCutoff = (time, range) => range.complete ? time < range.cutoff : time <= range.cutoff;
+  const inRange = (time, range) => time >= `${range.start} 00:00:00` && beforeCutoff(time, range);
+  const stopAt = (bill, range) => allStops.find(s => s.app === bill.app && s.subscriptionId === bill.subscriptionId && beforeCutoff(s.eventAt, range));
+  const known = (bill, range) => bill.attempts.filter(a => beforeCutoff(a.at, range));
 
   function billRecord(bill, range, event, status, reason = '') {
-    const attempts = known(bill, range.cutoff);
+    const attempts = known(bill, range);
     const success = attempts.find(a => a.status === '成功');
     const latest = attempts.at(-1);
-    const stop = stopAt(bill, range.cutoff);
+    const stop = stopAt(bill, range);
     const canRetry = !success && !stop && latest?.status === '失败' && !!latest.nextAt;
     return {
       ...bill, id: bill.billingId, eventAt: event.at, status, reason,
@@ -207,15 +209,15 @@ export function createModel({bills: rawBills = [], stops: rawStops = [], asOf = 
         .filter(s => metric === 'stopped' || s.stopType === STOP_TYPES.find(item => item.metric === metric)?.type)
         .map(s => {
           const bill = allBills.find(b => b.billingId === s.billingId);
-          return {...s, status: reasonLabel(s.stopType), stopReason: reasonLabel(s.stopType), nextAt: '', paidAmount: null, attempts: bill ? known(bill, range.cutoff) : []};
+          return {...s, status: reasonLabel(s.stopType), stopReason: reasonLabel(s.stopType), nextAt: '', paidAmount: null, attempts: bill ? known(bill, range) : []};
         });
     } else if (['success', 'recovered', 'failed', 'pending'].includes(metric)) {
       for (const bill of allBills.filter(b => applies(b, range))) {
-        const attempts = known(bill, range.cutoff);
+        const attempts = known(bill, range);
         if (!attempts.length) continue;
         const success = attempts.find(a => a.status === '成功');
         const latest = attempts.at(-1);
-        const stop = stopAt(bill, range.cutoff);
+        const stop = stopAt(bill, range);
         const recovery = success && attempts.some(a => a.status === '失败' && a.at <= success.at);
         if ((metric === 'success' || metric === 'recovered') && success && inRange(success.at, range) && (metric !== 'recovered' || recovery)) {
           records.push(billRecord(bill, range, success, '成功', recovery ? '失败后重试成功' : '自动续费扣款成功'));

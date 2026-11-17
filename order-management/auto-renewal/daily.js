@@ -1,4 +1,4 @@
-import {APPS, AS_OF, DEFAULT_RANGE, STOP_TYPES, summarize, recordsFor} from './daily-data.js?v=cleanup-usd-20261117';
+import {APPS, AS_OF, DEFAULT_RANGE, STOP_TYPES, summarize, recordsFor} from './daily-data.js?v=yesterday-cutoff-20261117';
 
 const icons = {
   orders:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
@@ -33,23 +33,39 @@ document.querySelector('#daily-app').innerHTML = `
 <form id="daily-filters" class="surface daily-filters" novalidate><div class="daily-filter-fields"><div class="field daily-app-filter"><label for="app">所属应用</label><select id="app"><option value="">全部应用</option>${APPS.map(a=>`<option>${esc(a)}</option>`).join('')}</select></div><div class="field daily-date-filter"><label for="start">日期范围 <span class="filter-zone">UTC+8</span></label><div class="date-range"><input type="date" id="start" aria-label="开始日期" max="${today}" required><span>至</span><input type="date" id="end" aria-label="结束日期" max="${today}" required></div></div><div class="daily-filter-actions"><button class="btn" type="button" id="reset">重置</button><button class="btn primary" type="submit">${icon('search')}查询</button></div></div><p id="filter-error" class="filter-error" role="alert"></p></form>
 <section class="daily-summary" aria-label="续费统计"><div class="metrics-grid" id="metrics" aria-live="polite"></div></section>
 <section class="surface daily-results" aria-labelledby="daily-heading"><div class="daily-result-toolbar"><div><h2 id="daily-heading">每日统计<span class="result-count" id="day-count"></span></h2><p>点击数量查看对应记录</p></div><button type="button" class="btn" id="export">${icon('export')}导出统计</button></div><div class="daily-table-scroll" role="region" aria-label="每日续费统计，可横向滚动" tabindex="0"><table class="daily-table"><thead><tr><th data-column="date">${sortButton('date','日期')}</th><th data-column="success">${sortButton('success','续订成功')}</th><th data-column="failed">${sortButton('failed','续订失败')}</th><th data-column="pending">${sortButton('pending','待重试')}<span class="column-note">截至当日</span></th><th data-column="stopped">${sortButton('stopped','停止续费')}</th><th>续订实付金额</th><th>操作</th></tr></thead><tbody id="daily-rows"></tbody></table></div></section>
-</main></div>`;
+</main></div><div id="statistics-tooltip" class="statistics-tooltip" role="tooltip" hidden></div>`;
 
 function sortButton(field, label) { return `<button type="button" class="daily-sort" data-sort="${field}">${label}<span class="sort-glyph">${icon('down')}</span></button>`; }
-function cutLabel(day) { const end = day || filters.end; return end === today ? `${end.slice(5).replace('-','/')} ${AS_OF.slice(11,16)}` : `${end.slice(5).replace('-','/')} 23:59`; }
+function nextDay(day) { const value=new Date(day+'T00:00:00Z');value.setUTCDate(value.getUTCDate()+1);return value.toISOString().slice(0,10); }
+function cutLabel(day) { const end=day||filters.end;return end===today?`${end.slice(5).replace('-','/')} ${AS_OF.slice(11,16)}`:`${nextDay(end).slice(5).replace('-','/')} 00:00前`; }
+function statisticsStatus(day) { return day===today?'<span class="today-label" tabindex="0" data-statistics-tooltip aria-describedby="statistics-tooltip">统计中</span>':''; }
+let statisticsTipTimer;
+function hideStatisticsTip() { clearTimeout(statisticsTipTimer);document.querySelector('#statistics-tooltip').hidden=true; }
+function showStatisticsTip(trigger) {
+  if(drawer.open)return;
+  clearTimeout(statisticsTipTimer);
+  const tip=document.querySelector('#statistics-tooltip');
+  tip.innerHTML=`<strong>当天数据尚未完整</strong><p>统计开始：<span class="tooltip-time">${today} 00:00</span><br>统计截止：<span class="tooltip-time">${nextDay(today)} 00:00</span>（不含）</p><p>模拟数据截至：<span class="tooltip-time">${AS_OF}</span><br>以上时间均为 UTC+8。</p><p>仅展示截至更新时间已发生的数据；历史日期按完整自然日展示。</p>`;
+  tip.hidden=false;
+  const rect=trigger.getBoundingClientRect();
+  tip.style.left=Math.max(12,Math.min(rect.left,window.innerWidth-tip.offsetWidth-12))+'px';
+  tip.style.top=Math.max(12,rect.bottom+8+tip.offsetHeight>window.innerHeight-12?rect.top-tip.offsetHeight-8:rect.bottom+8)+'px';
+}
+function scheduleStatisticsTipHide() { clearTimeout(statisticsTipTimer);statisticsTipTimer=setTimeout(hideStatisticsTip,120); }
 function countButton(metric, value, day='', extra='') { return `<button class="count-link ${extra}" data-metric="${metric}" ${day?`data-day="${day}"`:''} aria-label="查看${day?day+' ':''}${labels[metric]} ${num(value)}${stopMetrics.includes(metric)?'条':'笔'}明细" ${value?'':'disabled'}>${num(value)}</button>`; }
 function amountsMarkup(amounts, compact=false) { return amounts?.length ? amounts.map(a=>`<span class="${compact?'daily-amount':'metric-money'}"><strong>${money(a.amount)}</strong><span>${esc(a.currency)}</span></span>`).join('') : `<span class="${compact?'daily-amount':'metric-money'}"><strong>0.00</strong><span>USD</span></span>`; }
 function render() {
+  hideStatisticsTip();
   summary = summarize(filters);
   document.querySelector('#metrics').innerHTML = `
     <article class="metric-card"><h3>续订成功订单数</h3><div class="metric-number">${countButton('success',summary.success)}<span>笔</span></div><div class="metric-secondary">其中重试成功 ${countButton('recovered',summary.recovered,'','metric-sub-link')} 笔</div></article>
     <article class="metric-card"><h3>续订失败订单数</h3><div class="metric-number">${countButton('failed',summary.failed)}<span>笔</span></div><div class="metric-secondary">发生过失败，按续费期去重</div></article>
-    <article class="metric-card"><h3>待重试订单数 <span class="metric-label-note">期末</span></h3><div class="metric-number">${countButton('pending',summary.pending)}<span>笔</span></div><div class="metric-secondary">截至 ${cutLabel()}，含此前积压</div></article>
+    <article class="metric-card"><h3>待重试订单数 <span class="metric-label-note">期末</span></h3><div class="metric-number">${countButton('pending',summary.pending)}<span>笔</span></div></article>
     <article class="metric-card"><h3>停止续费订阅数</h3><div class="metric-number">${countButton('stopped',summary.stopped)}<span>条</span></div><div class="metric-secondary stop-split">${STOP_TYPES.map(item=>`<span class="stop-breakdown-item">${item.label} ${countButton(item.metric,summary[item.metric],'','metric-sub-link')}</span>`).join('')}</div></article>
     <article class="metric-card metric-amount"><h3>续订实付金额</h3><div class="metric-money-list">${amountsMarkup(summary.amounts)}</div></article>`;
   const days = sortedDays(summary.days);
   document.querySelector('#day-count').textContent = `共 ${days.length} 天`;
-  document.querySelector('#daily-rows').innerHTML = days.length ? days.map(d=>`<tr><td><span class="daily-date">${d.date}</span>${d.date===today?'<span class="today-label" title="当日尚未结束，当前数据截至 ' + AS_OF + '（UTC+8）">统计中</span>':''}</td><td>${countButton('success',d.success,d.date)}<span class="cell-note">重试成功 ${countButton('recovered',d.recovered,d.date,'metric-sub-link')}</span></td><td>${countButton('failed',d.failed,d.date)}</td><td>${countButton('pending',d.pending,d.date)}</td><td>${countButton('stopped',d.stopped,d.date)}<span class="cell-note"><button type="button" class="text-button stop-day-details" data-metric="stopped" data-day="${d.date}" ${d.stopped?'':'disabled'}>查看原因</button></span></td><td>${amountsMarkup(d.amounts,true)}</td><td><button type="button" class="text-button primary" data-metric="success" data-day="${d.date}" aria-label="查看${d.date}的续费明细">查看明细</button></td></tr>`).join('') : '<tr><td colspan="7"><div class="daily-empty"><strong>暂无符合条件的统计</strong><p>可调整应用或日期范围后查询。</p><button class="btn" data-reset>重置筛选</button></div></td></tr>';
+  document.querySelector('#daily-rows').innerHTML = days.length ? days.map(d=>`<tr><td><span class="daily-date">${d.date}</span>${statisticsStatus(d.date)}</td><td>${countButton('success',d.success,d.date)}<span class="cell-note">重试成功 ${countButton('recovered',d.recovered,d.date,'metric-sub-link')}</span></td><td>${countButton('failed',d.failed,d.date)}</td><td>${countButton('pending',d.pending,d.date)}</td><td>${countButton('stopped',d.stopped,d.date)}<span class="cell-note"><button type="button" class="text-button stop-day-details" data-metric="stopped" data-day="${d.date}" ${d.stopped?'':'disabled'}>查看原因</button></span></td><td>${amountsMarkup(d.amounts,true)}</td><td><button type="button" class="text-button primary" data-metric="success" data-day="${d.date}" aria-label="查看${d.date}的续费明细">查看明细</button></td></tr>`).join('') : '<tr><td colspan="7"><div class="daily-empty"><strong>暂无符合条件的统计</strong><p>可调整应用或日期范围后查询。</p><button class="btn" data-reset>重置筛选</button></div></td></tr>';
   document.querySelectorAll('[data-column]').forEach(th=> { const active=th.dataset.column===sort.field; th.setAttribute('aria-sort',active?(sort.direction==='asc'?'ascending':'descending'):'none'); th.querySelector('button').dataset.direction=active?sort.direction:''; });
   document.querySelector('#export').disabled = !days.length;
 }
@@ -110,6 +126,7 @@ function renderRecords() {
   reasonBox.innerHTML=reasons.size?'<span>失败原因</span>'+[...reasons].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([reason,count])=>`<span class="reason-count">${esc(reason)} <strong>${count}</strong></span>`).join(''):'';
 }
 function openRecords(metric='success',day='',focusSearch=false) {
+  hideStatisticsTip();
   lastFocus=document.activeElement; drawerMetric=metric;drawerDay=day;recordQuery='';platformReason='';
   drawer.innerHTML=`<div class="drawer-head"><div><h2 id="daily-drawer-title">续费明细</h2><p class="drawer-subtitle">${esc(day||filters.start+' 至 '+filters.end)} · ${esc(filters.app||'全部应用')} · UTC+8</p></div><button class="icon-button" data-close aria-label="关闭明细">${icon('close')}</button></div><div class="drawer-body"><div class="drawer-search"><label for="record-query">用户 / 订阅 / 订单查询</label><div><input id="record-query" type="search" placeholder="用户ID、订阅号、订单号或三方交易号" autocomplete="off"><button class="btn" id="drawer-export">${icon('export')}导出明细</button></div></div><div class="drawer-filter-bar" id="drawer-tabs" role="group" aria-label="明细分类"></div><div class="drawer-record-meta"><span id="drawer-record-count"></span><span id="drawer-scope-note"></span></div><div class="failure-reasons" id="failure-reasons" hidden></div><div class="daily-records" id="drawer-records"></div></div>`;
   renderRecords();
@@ -138,6 +155,16 @@ function exportRecords() {
   download(`${labels[drawerMetric]}_${drawerDay||filters.start+'_'+filters.end}.csv`,rows);
 }
 
+document.addEventListener('mouseover',e=>{const trigger=e.target.closest('[data-statistics-tooltip]');if(trigger)showStatisticsTip(trigger);});
+document.addEventListener('mouseout',e=>{if(e.target.closest('[data-statistics-tooltip]'))scheduleStatisticsTipHide();});
+document.addEventListener('focusin',e=>{if(e.target.matches('[data-statistics-tooltip]'))showStatisticsTip(e.target);});
+document.addEventListener('focusout',e=>{if(e.target.matches('[data-statistics-tooltip]'))scheduleStatisticsTipHide();});
+const statisticsTooltip=document.querySelector('#statistics-tooltip');
+statisticsTooltip.addEventListener('mouseenter',()=>clearTimeout(statisticsTipTimer));
+statisticsTooltip.addEventListener('mouseleave',scheduleStatisticsTipHide);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideStatisticsTip();});
+window.addEventListener('scroll',hideStatisticsTip,true);
+window.addEventListener('resize',hideStatisticsTip);
 document.querySelector('#daily-filters').addEventListener('submit',e=>{e.preventDefault();applyFilters();});
 document.querySelector('#reset').addEventListener('click',reset);
 document.querySelector('#export').addEventListener('click',exportDays);

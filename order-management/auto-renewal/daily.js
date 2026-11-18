@@ -1,4 +1,4 @@
-import {APPS, AS_OF, DEFAULT_RANGE, STOP_TYPES, summarize, recordsFor} from './daily-data.js?v=yesterday-cutoff-20261117';
+import {APPS, AS_OF, DEFAULT_RANGE, STOP_TYPES, summarize, recordsFor} from './daily-data.js?v=live-status-20261118';
 
 const icons = {
   orders:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',

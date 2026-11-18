@@ -1,5 +1,8 @@
-// Synthetic demonstration data only. All timestamps use fixed UTC+8 wall time.
-export const AS_OF = '2026-11-17 18:00:00';
+// Synthetic demonstration data only. Each load creates a snapshot in UTC+8.
+export function formatDemoTimestamp(now = new Date()) {
+  return new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 19).replace('T', ' ');
+}
+export const AS_OF = formatDemoTimestamp();
 export const APPS = ['DramaVideo', 'QuikDrama', 'Prutora'];
 export const STOP_TYPES = [
   {metric: 'voluntary', type: 'voluntary', label: '用户取消'},
@@ -14,7 +17,9 @@ const shiftDay = (day, count) => {
   date.setUTCDate(date.getUTCDate() + count);
   return date.toISOString().slice(0, 10);
 };
-export const DEFAULT_RANGE = {start: shiftDay(dayOf(AS_OF), -7), end: shiftDay(dayOf(AS_OF), -1)};
+const demoToday = dayOf(AS_OF);
+const demoYesterday = shiftDay(demoToday, -1);
+export const DEFAULT_RANGE = {start: shiftDay(demoToday, -7), end: demoYesterday};
 const at = (day, time) => `${day} ${time}:00`;
 const uniqueAttempts = attempts => [...new Map(attempts.map(a => [a.id, a])).values()]
   .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
@@ -77,7 +82,7 @@ function makeBill(key, day, app, mode, extra = {}) {
 
 // Thirty days of deterministic examples, without implying real business performance.
 for (let offset = 0; offset < 30; offset++) {
-  const day = shiftDay('2026-10-19', offset);
+  const day = shiftDay(demoToday, offset - 29);
   APPS.forEach((app, appIndex) => {
     const count = 4 + (offset + appIndex) % 4;
     for (let n = 0; n < count; n++) makeBill(`${day.replaceAll('-', '')}-${appIndex}-${n}`, day, app, (offset + appIndex + n) % 6);
@@ -100,44 +105,44 @@ export const FIXTURE_IDS = {
   manual: 'DEMO-SUB-FIX-MANUAL', unknown: 'DEMO-SUB-FIX-UNKNOWN',
   service: 'DEMO-SUB-FIX-SERVICE', refund: 'DEMO-BILL-FIX-SAME',
 };
-const cross = makeBill('FIX-CROSS', '2026-11-16', 'DramaVideo', 3, {userId: '810001'});
-const same = makeBill('FIX-SAME', '2026-11-17', 'DramaVideo', 2, {userId: '810001'});
+const cross = makeBill('FIX-CROSS', demoYesterday, 'DramaVideo', 3, {userId: '810001'});
+const same = makeBill('FIX-SAME', demoToday, 'DramaVideo', 2, {userId: '810001'});
 // Repeated provider notifications have the same attempt identifier and never add orders or amounts.
 same.attempts.push({...same.attempts[1]});
-const pending = makeBill('FIX-PENDING', '2026-11-16', 'DramaVideo', 5, {userId: '810002'});
-const terminated = makeBill('FIX-TERMINATED', '2026-11-17', 'DramaVideo', 4, {userId: '810003'});
+const pending = makeBill('FIX-PENDING', demoYesterday, 'DramaVideo', 5, {userId: '810002'});
+const terminated = makeBill('FIX-TERMINATED', demoToday, 'DramaVideo', 4, {userId: '810003'});
 stops.push({
   id: 'DEMO-STOP-FIX-VOLUNTARY', subscriptionId: FIXTURE_IDS.voluntary, userId: '810004',
-  app: 'DramaVideo', product: '30天会员', eventAt: '2026-11-17 09:45:00', stopType: 'voluntary',
-  reason: '用户主动关闭自动续费', entitlementEnd: '2026-11-30 09:45:00', currency: 'USD', amount: null, attempts: [],
+  app: 'DramaVideo', product: '30天会员', eventAt: at(demoToday, '09:45'), stopType: 'voluntary',
+  reason: '用户主动关闭自动续费', entitlementEnd: at(shiftDay(demoToday, 13), '09:45'), currency: 'USD', amount: null, attempts: [],
 });
 
 // Confirmed closure examples. Refund amounts never reduce the gross renewal-paid metric.
 stops.push(
   {
     id: 'DEMO-STOP-FIX-MANUAL', subscriptionId: FIXTURE_IDS.manual, userId: '810002',
-    app: 'DramaVideo', product: '30天会员', eventAt: '2026-11-16 16:20:00', stopType: 'platform',
+    app: 'DramaVideo', product: '30天会员', eventAt: at(demoYesterday, '16:20'), stopType: 'platform',
     reasonCode: 'manual_close', reason: '后台人工关闭', source: '管理后台', operator: '运营（演示）',
-    entitlementEnd: '2026-11-28 09:00:00', closureStatus: 'succeeded',
+    entitlementEnd: at(shiftDay(demoToday, 11), '09:00'), closureStatus: 'succeeded',
   },
   {
-    ...same, id: 'DEMO-STOP-FIX-REFUND', eventAt: '2026-11-17 17:35:00', stopType: 'platform',
+    ...same, id: 'DEMO-STOP-FIX-REFUND', eventAt: at(demoToday, '17:35'), stopType: 'platform',
     reasonCode: 'refund_succeeded', reason: '退款成功自动关闭', source: '系统自动', operator: '',
     entitlementEnd: '', closureStatus: 'succeeded',
     refund: {id: 'DEMO-REFUND-FIX-SAME', orderId: same.orderId, subscriptionId: same.subscriptionId,
-      status: 'succeeded', type: 'full', amount: same.amount, currency: same.currency, succeededAt: '2026-11-17 17:30:00'},
+      status: 'succeeded', type: 'full', amount: same.amount, currency: same.currency, succeededAt: at(demoToday, '17:30')},
   },
   {
     id: 'DEMO-STOP-FIX-SERVICE', subscriptionId: FIXTURE_IDS.service, userId: '810004',
-    app: 'DramaVideo', product: '7天会员', eventAt: '2026-11-17 16:45:00', stopType: 'voluntary',
+    app: 'DramaVideo', product: '7天会员', eventAt: at(demoToday, '16:45'), stopType: 'voluntary',
     reasonCode: 'user_requested', reason: '客服按用户要求取消', source: '客服后台', operator: '客服（演示）',
-    entitlementEnd: '2026-11-22 09:00:00', closureStatus: 'succeeded',
+    entitlementEnd: at(shiftDay(demoToday, 5), '09:00'), closureStatus: 'succeeded',
   },
   {
     id: 'DEMO-STOP-FIX-UNKNOWN', subscriptionId: FIXTURE_IDS.unknown, userId: '810003',
-    app: 'QuikDrama', product: '30天会员', eventAt: '2026-11-17 17:10:00', stopType: 'unknown',
+    app: 'QuikDrama', product: '30天会员', eventAt: at(demoToday, '17:10'), stopType: 'unknown',
     reason: '渠道已确认关闭，未提供具体原因', source: '支付渠道', operator: '',
-    entitlementEnd: '2026-11-25 09:00:00', closureStatus: 'succeeded',
+    entitlementEnd: at(shiftDay(demoToday, 8), '09:00'), closureStatus: 'succeeded',
   },
 );
 

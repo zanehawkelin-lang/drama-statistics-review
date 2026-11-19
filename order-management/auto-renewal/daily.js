@@ -57,7 +57,7 @@ function render() {
   summary = summarize(filters);
   document.querySelector('#metrics').innerHTML = `
     <article class="metric-card"><h3>续订成功订单数</h3><div class="metric-number">${countButton('success',summary.success)}<span>笔</span></div></article>
-    <article class="metric-card"><h3>续订失败订单数</h3><div class="metric-number">${countButton('failed',summary.failed)}<span>笔</span></div><div class="metric-secondary">发生过失败，按续费期去重</div></article>
+    <article class="metric-card"><h3>续订失败订单数</h3><div class="metric-number">${countButton('failed',summary.failed)}<span>笔</span></div></article>
     <article class="metric-card"><h3>停止续费订阅数</h3><div class="metric-number">${countButton('stopped',summary.stopped)}<span>条</span></div></article>
     <article class="metric-card metric-amount"><h3>续订实付金额</h3><div class="metric-money-list">${amountsMarkup(summary.amounts)}</div></article>`;
   const days = sortedDays(summary.days);
@@ -88,10 +88,12 @@ function currentRecords() {
 function recordStatus(metric) { return {success:'成功',failed:'失败',stopped:'已停止'}[metric]; }
 function recordReason(r, metric) { return metric==='success'?'自动续费扣款成功':r.reason||(metric==='stopped'?'未提供具体原因':'扣款失败'); }
 function stopFactsMarkup(r) {
-  const facts=[['停止时间',r.eventAt],['具体原因',recordReason(r,'stopped')],['操作来源',r.source],['操作人',r.operator||'—']];
+  const facts = [
+    ['停止时间', r.eventAt],
+    ['具体原因', recordReason(r, 'stopped')],
+    ['操作人', r.operator || '—'],
+  ];
   if(!r.refund) facts.push(['会员权益到期',r.entitlementEnd||'—']);
-  const failure=(r.attempts||[]).filter(a=>a.status==='失败').at(-1);
-  if(failure) facts.push(['最近扣款失败原因',failure.reason||'未提供']);
   if(r.refund) facts.push(['退款订单',r.refund.orderId],['退款类型',r.refund.type==='partial'?'部分退款':'全额退款'],['退款金额',money(r.refund.amount)+' '+r.refund.currency],['退款成功时间',r.refund.succeededAt]);
   return facts.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value||'—')}</dd></div>`).join('');
 }
@@ -102,7 +104,15 @@ function recordMarkup(r) {
   const timestampLabel=isPaid?'成功时间':'失败时间';
   const amount=isPaid?(r.paidAmount??r.amount):r.amount;
   const facts=isStop?stopFactsMarkup(r):`<div><dt>${timestampLabel}</dt><dd>${esc(r.eventAt||'—')}</dd></div><div><dt>${amountLabel}</dt><dd>${money(amount)} ${esc(r.currency||'')}</dd></div><div><dt>订阅号</dt><dd>${esc(r.subscriptionId)}</dd></div>`;
-  return `<article class="daily-record"><div class="record-top"><strong class="record-order">${esc(isStop?r.subscriptionId:r.orderId||r.billingId)}</strong><span class="status-pill ${drawerMetric}">${recordStatus(drawerMetric)}</span></div><div class="record-meta"><span>用户ID：${esc(r.userId)}</span><span>${esc(r.app)}</span><span>${esc(r.product)}</span></div><dl class="record-facts">${facts}</dl>${drawerMetric==='failed'?`<p class="record-reason">${esc(recordReason(r,'failed'))}</p>`:''}</article>`;
+  return `<article class="daily-record">
+    <div class="record-top">
+      <strong class="record-order">${esc(isStop ? r.subscriptionId : r.orderId || r.billingId)}</strong>
+      <span class="status-pill ${drawerMetric}">${recordStatus(drawerMetric)}</span>
+    </div>
+    <div class="record-meta"><span>用户ID：${esc(r.userId)}</span><span>${esc(r.app)}</span><span>${esc(r.product)}</span></div>
+    <dl class="record-facts${isStop ? ' stopped-facts' : ''}">${facts}</dl>
+    ${drawerMetric === 'failed' ? `<p class="record-reason">${esc(recordReason(r, 'failed'))}</p>` : ''}
+  </article>`;
 }
 function drawerTabs() {
   const family=[['success','成功'],['failed','失败'],['stopped','停止续费']];
@@ -144,8 +154,8 @@ function exportDays() {
 }
 function exportRecords() {
   const paid=drawerMetric==='success', stop=drawerMetric==='stopped';
-  const rows=[['记录类型','用户ID','所属应用','订阅号','续费订单号','商品','发生时间（UTC+8）','结果','具体原因',paid?'实付金额':stop?'金额（不适用）':'请求扣款金额','币种','会员权益到期时间','操作来源','操作人','退款订单号','退款类型','退款金额','退款币种','退款成功时间']];
-  for(const r of currentRecords()) rows.push([labels[drawerMetric],r.userId,r.app,r.subscriptionId,r.orderId||'',r.product,r.eventAt,recordStatus(drawerMetric),recordReason(r,drawerMetric),stop?'':paid?r.paidAmount??r.amount:r.amount,stop?'':r.currency,r.entitlementEnd||'',stop?r.source:'',stop?r.operator:'',r.refund?.orderId||'',r.refund?(r.refund.type==='partial'?'部分退款':'全额退款'):'',r.refund?.amount??'',r.refund?.currency||'',r.refund?.succeededAt||'']);
+  const rows=[['记录类型','用户ID','所属应用','订阅号','续费订单号','商品','发生时间（UTC+8）','结果','具体原因',paid?'实付金额':stop?'金额（不适用）':'请求扣款金额','币种','会员权益到期时间','操作人','退款订单号','退款类型','退款金额','退款币种','退款成功时间']];
+  for(const r of currentRecords()) rows.push([labels[drawerMetric],r.userId,r.app,r.subscriptionId,r.orderId||'',r.product,r.eventAt,recordStatus(drawerMetric),recordReason(r,drawerMetric),stop?'':paid?r.paidAmount??r.amount:r.amount,stop?'':r.currency,r.entitlementEnd||'',stop?r.operator:'',r.refund?.orderId||'',r.refund?(r.refund.type==='partial'?'部分退款':'全额退款'):'',r.refund?.amount??'',r.refund?.currency||'',r.refund?.succeededAt||'']);
   download(`${labels[drawerMetric]}_${drawerDay||filters.start+'_'+filters.end}.csv`,rows);
 }
 

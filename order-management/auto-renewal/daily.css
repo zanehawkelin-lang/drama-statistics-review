@@ -42,7 +42,7 @@
 .summary-heading h2{font-size:14px;font-weight:600;line-height:1.6;margin:0}
 .period-note{color:var(--muted);font-size:11px;font-weight:400;line-height:1.6;margin:4px 0 0}
 .summary-heading .text-button{font-size:12px;white-space:nowrap}
-.metrics-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:#fff;border-radius:14px;overflow:hidden;margin-bottom:20px}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;border-radius:14px;overflow:hidden;margin-bottom:20px}
 .metric-card{min-width:0;min-height:142px;padding:20px 22px 18px;border-right:1px solid var(--line)}
 .metric-card:last-child{border-right:0}
 .metric-card>h3{display:flex;align-items:center;gap:6px;color:#596274;font-size:12px;line-height:1.65;font-weight:500;min-height:20px}
@@ -57,9 +57,8 @@
 .metric-secondary .inline-count{color:var(--accent)}
 .inline-count{display:inline;padding:2px 0;border:0;background:none;font-size:inherit;line-height:inherit;text-align:left}
 .inline-count:hover{text-decoration:underline;text-underline-offset:3px}
-.metric-card.pending .metric-number small,.metric-card.stopped .metric-number>span{color:var(--muted)}
 .metric-money-list{display:flex;flex-direction:column;gap:6px;margin:13px 0 6px;min-width:0}
-.metric-money{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;color:var(--text);font-weight:600;font-size:21px;line-height:1.3;letter-spacing:-.01em}
+.metric-money{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;color:var(--text);font-weight:600;font-size:28px;line-height:1.3;letter-spacing:-.01em}
 .metric-money>button{border:0;background:none;color:inherit;padding:0;text-align:left;font:inherit;letter-spacing:inherit}
 .metric-money>button:hover{color:var(--accent)}
 .metric-money small,.metric-money .currency{color:var(--muted);font-size:10px;letter-spacing:0;font-weight:400;margin-left:0}
@@ -71,7 +70,7 @@
 .panel-caption{color:var(--muted);font-size:11px;line-height:1.6;margin:4px 0 0}
 .daily-result-toolbar .btn{flex-shrink:0}
 .daily-table-scroll{overflow:auto;min-width:0;border-radius:0;overscroll-behavior-inline:contain}
-.daily-table{width:100%;min-width:1020px;border-collapse:separate;border-spacing:0;font-size:12px;font-variant-numeric:tabular-nums}
+.daily-table{width:100%;min-width:860px;border-collapse:separate;border-spacing:0;font-size:12px;font-variant-numeric:tabular-nums}
 .daily-table th{height:44px;background:var(--soft);border-bottom:1px solid var(--line);text-align:right;padding:0 15px;color:#5d6678;font-size:11px;font-weight:550;white-space:nowrap}
 .daily-table th:first-child{width:15%;text-align:left}
 .daily-table th:last-child{width:10%;text-align:right}
@@ -142,20 +141,11 @@
 .status-pill.success::before{background:#3e9564}
 .status-pill.failed{color:#a53e48}
 .status-pill.failed::before{background:#c35c68}
-.status-pill.pending{color:#8a5c16}
-.status-pill.pending::before{background:#bc8735}
 .status-pill.stopped{color:#637083}
 .status-pill.stopped::before{background:#8590a0}
 .attempt-toggle{display:inline-flex;align-items:center;gap:5px;border:0;background:none;color:var(--accent);font-size:11px;line-height:1.7;padding:6px 0;margin-top:10px}
 .attempt-toggle svg{width:12px;height:12px}
 .attempt-toggle[aria-expanded=true] svg{transform:rotate(180deg)}
-.daily-drawer .attempt-list{list-style:none;padding:0 15px;margin:7px 0 0;background:var(--soft);border-radius:7px}
-.daily-drawer .attempt-row{display:grid;grid-template-columns:1fr auto;gap:5px 16px;border-bottom:1px solid var(--line);padding:12px 0;font-size:11px;line-height:1.7;min-width:0}
-.daily-drawer .attempt-row:last-child{border-bottom:0}
-.attempt-row>div{min-width:0}
-.attempt-row time{font-size:10px;color:var(--muted)}
-.attempt-row .attempt-reason{color:#a53e48;font-size:11px}
-.attempt-row .attempt-number{color:#5c6677;font-size:10px;margin-right:9px}
 .lookup-link{display:inline-flex;align-items:center;gap:4px;margin-top:11px;font-size:11px;line-height:1.7;text-decoration:none;color:var(--accent)}
 .lookup-link:hover{text-decoration:underline;text-underline-offset:3px}
 .lookup-link svg{height:12px;width:12px}
@@ -183,14 +173,13 @@
   .daily-filter-actions{margin-left:0}
   .metric-card{padding:19px 16px 17px}
   .metric-number>.count-link{font-size:28px}
-  .metric-money{font-size:20px}
+  .metric-money{font-size:25px}
 }
 @media(max-width:1000px) and (min-width:761px){
-  .metrics-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .metric-card{min-height:126px}
-  .metric-card:nth-child(3){border-right:0}
-  .metric-card:nth-child(n+4){border-top:1px solid var(--line)}
-  .metric-card:last-child{grid-column:span 2}
+  .metric-card:nth-child(2n){border-right:0}
+  .metric-card:nth-child(n+3){border-top:1px solid var(--line)}
   .metric-card:last-child .metric-money-list{flex-direction:row;flex-wrap:wrap;gap:15px;align-items:baseline}
   .metric-card:last-child .metric-money+.metric-money{font-size:16px}
   .daily-filter-fields>.field{flex-basis:calc(40% - 8px)}
@@ -228,7 +217,6 @@
   .metric-card{min-height:116px;padding:16px 17px 14px}
   .metric-card:nth-child(2n){border-right:0}
   .metric-card:nth-child(n+3){border-top:1px solid var(--line)}
-  .metric-card:last-child{grid-column:1 / -1;min-height:103px;border-right:0}
   .metric-card>h3{font-size:11px;min-height:18px}
   .metric-number{margin:10px 0 5px;gap:5px}
   .metric-number>.count-link{font-size:27px}
@@ -243,7 +231,7 @@
   .daily-result-toolbar h2{font-size:13px}
   .panel-caption{font-size:10px;max-width:33ch;line-height:1.7}
   .daily-result-toolbar .btn{height:32px;padding:0 9px;font-size:10px}
-  .daily-table{min-width:940px;font-size:11px}
+  .daily-table{min-width:820px;font-size:11px}
   .daily-table th{font-size:10px;height:41px;padding:0 12px}
   .daily-table td{height:64px;padding:11px 12px}
   .daily-table th:first-child,.daily-table td:first-child{min-width:123px;width:123px}
@@ -269,10 +257,6 @@
   .record-facts dd{font-size:11px}
   .record-facts dt{font-size:10px}
   .record-reason{font-size:10px}
-  .daily-drawer .attempt-list{padding:0 11px}
-  .daily-drawer .attempt-row{font-size:10px;gap:5px 9px;padding:11px 0}
-  .attempt-row .attempt-number,.attempt-row time{font-size:10px}
-  .attempt-row .attempt-reason{font-size:10px}
   .definition-copy{font-size:11px;line-height:1.9;padding-top:20px}
   .definition-copy h3{font-size:13px;margin-top:22px}
   .definition-table{font-size:10px}
@@ -305,7 +289,6 @@
 #summary-period{font-size:11px;line-height:1.7;color:#5b6578}
 .summary-scope{margin-left:auto;color:var(--muted);font-size:10px;line-height:1.7}
 .metric-card>h3{font-size:12px;line-height:1.65;font-weight:500;margin:0;color:#596274;display:flex;align-items:center;gap:5px;min-height:20px}
-.metric-label-note{font-size:9px;padding:0 4px;line-height:16px;font-weight:400;color:#6b657f;background:#f4f2fb;border-radius:3px}
 .count-link{border:0;background:none;padding:0;color:var(--accent);font-size:13px;line-height:1.65;font-weight:550;white-space:nowrap;min-height:22px;display:inline-block}
 .count-link:hover{text-decoration:underline;text-underline-offset:3px}
 .count-link:disabled{cursor:default;opacity:1;color:var(--muted);text-decoration:none}
@@ -313,10 +296,6 @@
 .metric-number>.count-link:hover{color:var(--accent)}
 .metric-number>.count-link:disabled{color:#71798b}
 .metric-number>span{color:var(--muted);font-size:11px;white-space:nowrap}
-.metric-sub-link{font-size:inherit;font-weight:500;min-height:0;line-height:inherit}
-.metric-secondary .metric-sub-link{font-size:11px}
-.stop-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px}
-.stop-split>.stop-breakdown-item{display:flex;align-items:baseline;justify-content:space-between;gap:4px;margin:0;color:var(--muted);white-space:nowrap}
 .metric-money>strong{font:inherit;font-weight:600}
 .metric-money>span{font-size:10px;line-height:1.6;font-weight:400;color:var(--muted);letter-spacing:0}
 .daily-result-toolbar h2{margin:0;font-size:14px;line-height:1.6;font-weight:600}
@@ -325,13 +304,11 @@
 .daily-date{white-space:nowrap;line-height:1.7;font-size:12px}
 .today-label{margin-left:7px;color:#615595;background:#f4f1ff;border-radius:3px;padding:2px 4px;font-size:9px;line-height:1.5}
 .cell-note{display:block;font-size:10px;line-height:1.75;margin-top:3px;color:var(--muted);white-space:nowrap;font-weight:400}
-.cell-note .count-link{font-size:10px;min-height:0;line-height:inherit;font-weight:500}
 .split-dot{margin:0 4px;color:#b0b5c1}
 .daily-amount{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;line-height:1.7}
 .daily-amount>strong{font:inherit;font-weight:500}
 .daily-amount>span{font-size:10px;color:var(--muted);font-weight:400}
-.daily-table th:nth-child(n+2):nth-child(-n+6),.daily-table td:nth-child(n+2):nth-child(-n+6){text-align:right}
-.daily-table th:nth-child(7),.daily-table td:nth-child(7){text-align:right}
+.daily-table th:nth-child(n+2),.daily-table td:nth-child(n+2){text-align:right}
 .daily-sort{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:5px 0;color:inherit;font:inherit;white-space:nowrap}
 .daily-sort:hover{color:var(--accent)}
 .daily-sort[data-direction=asc],.daily-sort[data-direction=desc]{color:var(--accent)}
@@ -360,23 +337,10 @@
 .status-pill::before{content:"";width:6px;height:6px;background:#8a93a3;border-radius:50%;flex-shrink:0}
 .status-pill.success{color:#287449}.status-pill.success::before{background:#48a36f}
 .status-pill.failed{color:#ad454e}.status-pill.failed::before{background:#d16c77}
-.status-pill.pending{color:#956719}.status-pill.pending::before{background:#b18b40}
 .status-pill.stopped{color:#697184}
-.record-attempts{margin-top:12px}
-.record-attempts>.attempt-toggle{display:list-item;cursor:pointer;font-size:11px;color:var(--accent);line-height:1.8;padding:4px 0;width:fit-content}
-.record-attempts>.attempt-toggle::marker{color:#9087be}
-.daily-drawer .attempt-row{display:block}
-.attempt-row-top{display:flex;align-items:center;flex-wrap:wrap;gap:5px 11px}
-.attempt-row-top>strong{font-size:11px;font-weight:500;color:#505c6f}
-.attempt-row-top time{margin-left:auto}
-.attempt-row>p{margin:6px 0 0;font-size:11px;color:#5b667a;line-height:1.75}
-.attempt-row>p.transaction-line{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
 .failure-reasons{display:flex;align-items:baseline;flex-wrap:wrap;gap:7px 18px;background:var(--soft);border-radius:6px;padding:11px 13px;margin-top:15px;color:#626d80;font-size:11px;line-height:1.7}
 .failure-reasons>span:first-child{font-weight:550;color:#48556a}
 .reason-count strong{color:#394458;font-weight:550;margin-left:5px}
-.stop-subtabs{display:flex;flex:0 0 100%;flex-wrap:wrap;gap:7px;padding:10px 0 12px}
-.stop-subtabs button{border:1px solid var(--line);border-radius:5px;padding:5px 9px;background:#fff;font-size:11px;color:var(--muted)}
-.stop-subtabs button.active{background:var(--accent-light);color:var(--accent);border-color:#ded8f4}
 @media(max-width:1200px){.metric-number>.count-link{font-size:28px}}
 @media(max-width:760px){
   .daily-main .page-heading{align-items:flex-start;gap:11px;margin-bottom:16px}
@@ -389,10 +353,8 @@
   #summary-period{font-size:10px;line-height:1.7}
   .summary-scope{margin-left:0;width:100%;font-size:9px}
   .metric-card>h3{font-size:11px;line-height:1.6;gap:4px}
-  .metric-label-note{font-size:8px;line-height:14px;padding:0 3px}
   .metric-number>.count-link{font-size:27px;min-height:32px}
   .metric-number>span{font-size:10px}
-  .metric-secondary .metric-sub-link{font-size:10px}
   .daily-result-toolbar h2{font-size:13px}
   .daily-result-toolbar p{font-size:10px}
   .daily-table th{height:46px}
@@ -413,16 +375,9 @@
   .record-meta{font-size:10px;gap:3px 11px;margin-bottom:14px}
   .record-top{gap:10px}
   .record-order{font-size:11px}
-  .attempt-row-top{gap:4px 8px}
-  .attempt-row-top time{margin-left:0;width:100%}
   .failure-reasons{font-size:10px;gap:4px 12px;padding:10px 11px}
 }
 
-/* Stop types remain compact; detailed reasons belong in the records drawer. */
+/* Specific stopping reasons remain in the records drawer. */
 .stop-day-details{font-size:10px;color:var(--muted);min-height:24px;padding:0}
 .daily-drawer .drawer-filter-bar{flex-wrap:wrap;overflow-x:visible;white-space:normal}
-.platform-reason-field{flex:0 0 230px;width:230px;margin:0 0 14px}
-.platform-reason-field label{font-size:11px;color:var(--muted);margin-bottom:5px}
-.platform-reason-field select{height:34px;font-size:12px}
-@media(max-width:1200px){.stop-split{grid-template-columns:1fr;max-width:150px}}
-@media(max-width:560px){.platform-reason-field{flex-basis:100%;width:100%}.stop-subtabs{gap:6px}}
